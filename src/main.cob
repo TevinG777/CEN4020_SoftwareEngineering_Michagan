@@ -31,6 +31,8 @@ MAIN-SECTION.
 
        MOVE "Welcome to InCollege!" TO W-MSG.
        PERFORM DISP-MSG.
+       MOVE "Log In" TO W-MSG.
+       PERFORM DISP-MSG.
 
        CLOSE I-FILE O-FILE.
        STOP RUN.
