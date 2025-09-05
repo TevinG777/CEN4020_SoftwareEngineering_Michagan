@@ -1,8 +1,42 @@
 *> This is free-form
 IDENTIFICATION DIVISION.
-PROGRAM-ID. HELLO.
+PROGRAM-ID. InCollege.
+
 ENVIRONMENT DIVISION.
+INPUT-OUTPUT SECTION.
+FILE-CONTROL.
+       *> read each file line by line
+       SELECT I-FILE ASSIGN TO "input.txt"
+           ORGANIZATION IS LINE SEQUENTIAL.
+       SELECT O-FILE ASSIGN TO "out.txt"
+           ORGANIZATION IS LINE SEQUENTIAL.
+
 DATA DIVISION.
+FILE SECTION.
+FD I-FILE.
+01 I-REC   PIC X(25).  *> Each line is up to 25 chars
+
+FD O-FILE.
+01 O-REC   PIC X(25).
+
+WORKING-STORAGE SECTION.
+01 W-MSG   PIC X(25).
+01 W-TMP   PIC X(25).
+
+
 PROCEDURE DIVISION.
-    DISPLAY "LinkedIn project"
-    STOP RUN.
+MAIN-SECTION.
+       OPEN INPUT I-FILE
+           OUTPUT O-FILE.
+
+       MOVE "Welcome to InCollege!" TO W-MSG.
+       PERFORM DISP-MSG.
+
+       CLOSE I-FILE O-FILE.
+       STOP RUN.
+
+DISP-MSG.
+       DISPLAY W-MSG.
+       MOVE W-MSG TO O-REC.
+       WRITE O-REC.
+       EXIT.
