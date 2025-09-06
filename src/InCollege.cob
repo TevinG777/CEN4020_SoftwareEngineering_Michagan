@@ -54,7 +54,8 @@ MAIN-SECTION.
            *> Check for the next line in the input file
            PERFORM READ-INPUT
        END-PERFORM
-       *> At this point, W-USR-INPT is valid; display a single confirmation
+
+       *> Process good input
        IF W-USR-INPT = "createnewaccount"
            MOVE "You selected Create New Account" TO W-MSG
        ELSE
