@@ -1,0 +1,9 @@
+Welcome to InCollege!
+Log In
+Create New Account
+Enter your choice:
+Invalid selection. Please try again:
+Invalid selection. Please try again:
+Please enter your username:
+Please enter your password:
+You have successfully logged in.
