@@ -16,7 +16,7 @@ FILE-CONTROL.
 DATA DIVISION.
 FILE SECTION.
 FD I-FILE.
-01 I-REC   PIC X(100).  *> Each line is up to 25 chars
+01 I-REC   PIC X(100).  *> Each line is up to 100 chars
 
 FD O-FILE.
 01 O-REC   PIC X(100).
@@ -109,20 +109,34 @@ MAIN-SECTION.
                PERFORM LOG-IN
            END-IF
        ELSE
-           *> Ask for uname and password
-           MOVE "Please enter your username:" TO W-MSG
-           PERFORM DISP-MSG
-           PERFORM READ-INPUT-RAW
-           MOVE W-USR-INPT TO W-USERNAME
-           MOVE "Please enter your password:" TO W-MSG
-           PERFORM DISP-MSG
-           PERFORM READ-INPUT-RAW
-           MOVE W-USR-INPT TO W-PASSWORD
+           SET NOT-FOUND TO TRUE
 
-           *> Validate user credentials
-           PERFORM LOG-IN
+           *> Keep asking for username and password until the user gets a right
+           PERFORM UNTIL FOUND
+               MOVE "Please enter your username:" TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM READ-INPUT-RAW
+               MOVE W-USR-INPT TO W-USERNAME
+
+               MOVE "Please enter your password:" TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM READ-INPUT-RAW
+               MOVE W-USR-INPT TO W-PASSWORD
+
+               PERFORM LOG-IN
+           END-PERFORM
        END-IF.
+       *> TODO: ADD OTHER INFO FOR SPASH PAGE (DEV 2)
 
+
+
+
+
+
+
+
+
+       *> LOGIC TO END PROGRAM AND CLOSE FILES
        CLOSE I-FILE U-FILE O-FILE.
        STOP RUN.
 
@@ -183,7 +197,8 @@ LOG-IN.
         *> Check if username and password match
         IF FUNCTION TRIM(USER-USERNAME(UX)) = FUNCTION TRIM(W-USERNAME) AND
         FUNCTION TRIM(USER-PASSWORD(UX)) = FUNCTION TRIM(W-PASSWORD)
-         MOVE "Login successful!" TO W-MSG
+         MOVE "You have successfully logged in." TO W-MSG
+         SET FOUND TO TRUE
          PERFORM DISP-MSG
          EXIT PERFORM
         END-IF
@@ -300,7 +315,7 @@ VALIDATE-PASSWORD.
        MOVE 0 TO PW-LEN
 
        *> Compute length up to last non-space, allow a max of 12 characters
-       PERFORM VARYING I FROM 1 BY 1 UNTIL I >= 12
+       PERFORM VARYING I FROM 1 BY 1 UNTIL I > 12
            IF W-PASSWORD(I:1) NOT = SPACE
                MOVE I TO PW-LEN
            END-IF
