@@ -126,15 +126,92 @@ MAIN-SECTION.
                PERFORM LOG-IN
            END-PERFORM
        END-IF.
-       *> TODO: ADD OTHER INFO FOR SPASH PAGE (DEV 2)
 
+POST-LOGIN-NAVIGATION.
+       MOVE "You are now logged in. Please select an option:" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "1. Search for a job" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "2. Find someone you know" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "3. Learn a new skill" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "4. Return to main menu" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "Enter choice (1-4):" TO W-MSG
+       PERFORM DISP-MSG
+       PERFORM READ-INPUT
 
+       EVALUATE W-USR-INPT
+           WHEN "1"
+               MOVE "Job search is under construction." TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM POST-LOGIN-NAVIGATION
+           WHEN "2"
+               MOVE "Find someone you know is under construction." TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM POST-LOGIN-NAVIGATION
+           WHEN "3"
+               PERFORM LEARN-SKILL
+           WHEN "4"
+               MOVE "Returning to main menu..." TO W-MSG
+               PERFORM DISP-MSG
+               EXIT
+           WHEN OTHER
+               MOVE "Invalid selection. Please try again." TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM POST-LOGIN-NAVIGATION
+       END-EVALUATE
+       EXIT.
 
+LEARN-SKILL.
+       MOVE "Learn a New Skill - choose one from the list:" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "1. Public Speaking" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "2. Microsoft Excel" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "3. Time Management" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "4. Leadership" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "5. Coding Fundamentals" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "6. Return to previous menu" TO W-MSG
+       PERFORM DISP-MSG
+       MOVE "Enter choice (1-6):" TO W-MSG
+       PERFORM DISP-MSG
+       PERFORM READ-INPUT
 
-
-
-
-
+       EVALUATE W-USR-INPT
+           WHEN "1"
+               MOVE "This skill page is under construction." TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM LEARN-SKILL
+           WHEN "2"
+               MOVE "This skill page is under construction." TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM LEARN-SKILL
+           WHEN "3"
+               MOVE "This skill page is under construction." TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM LEARN-SKILL
+           WHEN "4"
+               MOVE "This skill page is under construction." TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM LEARN-SKILL
+           WHEN "5"
+               MOVE "This skill page is under construction." TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM LEARN-SKILL
+           WHEN "6"
+               PERFORM POST-LOGIN-NAVIGATION
+           WHEN OTHER
+               MOVE "Invalid selection. Please try again." TO W-MSG
+               PERFORM DISP-MSG
+               PERFORM LEARN-SKILL
+       END-EVALUATE
+       EXIT.
 
        *> LOGIC TO END PROGRAM AND CLOSE FILES
        CLOSE I-FILE U-FILE O-FILE.
