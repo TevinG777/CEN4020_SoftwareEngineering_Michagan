@@ -6,11 +6,11 @@ ENVIRONMENT DIVISION.
 INPUT-OUTPUT SECTION.
 FILE-CONTROL.
        *> read each file line by line
-       SELECT I-FILE ASSIGN TO "InCollege-Input.txt"
+       SELECT I-FILE ASSIGN TO "bin/InCollege-Input.txt"
            ORGANIZATION IS LINE SEQUENTIAL.
-       SELECT O-FILE ASSIGN TO "InCollege-Output.txt"
+       SELECT O-FILE ASSIGN TO "bin/InCollege-Output.txt"
            ORGANIZATION IS LINE SEQUENTIAL.
-       SELECT U-FILE ASSIGN TO "InCollege-Users.txt"
+       SELECT U-FILE ASSIGN TO "bin/InCollege-Users.txt"
            ORGANIZATION IS LINE SEQUENTIAL.
 
 DATA DIVISION.
