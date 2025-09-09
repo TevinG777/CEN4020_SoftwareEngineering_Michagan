@@ -127,6 +127,13 @@ MAIN-SECTION.
            END-PERFORM
        END-IF.
 
+
+*> If the user login/account creation was successful then navigate to the post-login menu
+
+
+       IF FOUND
+           PERFORM POST-LOGIN-NAVIGATION
+       END-IF.
 POST-LOGIN-NAVIGATION.
        MOVE "You are now logged in. Please select an option:" TO W-MSG
        PERFORM DISP-MSG
