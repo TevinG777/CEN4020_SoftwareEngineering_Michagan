@@ -335,16 +335,25 @@ LOAD-USERS.
                AT END
                    EXIT PERFORM
                NOT AT END
-                   *> Trim the line and skip blanks
                    MOVE FUNCTION TRIM(W-TMP) TO W-RAW
                    IF W-RAW NOT = SPACES
-                       UNSTRING W-RAW DELIMITED BY ":"
-                           INTO W-USERNAME W-PASSWORD
-                       END-UNSTRING
+                       *> Find position of first colon
+                       MOVE 0 TO I
+                       INSPECT W-RAW TALLYING I
+                           FOR CHARACTERS BEFORE INITIAL ":"
+
+                       *> Username = left of colon
+                       MOVE W-RAW(1:I) TO W-USERNAME
+
+                       *> Password = everything after colon (colons allowed inside)
+                       MOVE W-RAW(I + 2 :) TO W-PASSWORD
+
                        IF USER-COUNT < 5
                            ADD 1 TO USER-COUNT
-                           MOVE FUNCTION TRIM(W-USERNAME) TO USER-USERNAME(USER-COUNT)
-                           MOVE FUNCTION TRIM(W-PASSWORD) TO USER-PASSWORD(USER-COUNT)
+                           MOVE FUNCTION TRIM(W-USERNAME)
+                               TO USER-USERNAME(USER-COUNT)
+                           MOVE FUNCTION TRIM(W-PASSWORD)
+                               TO USER-PASSWORD(USER-COUNT)
                        END-IF
                    END-IF
            END-READ
@@ -353,6 +362,7 @@ LOAD-USERS.
        *> close the USER file
        CLOSE U-FILE.
        EXIT.
+
 
 CREATE-ACCOUNT.
        *> Account limit check
