@@ -366,7 +366,7 @@ CREATE-ACCOUNT.
        SET USERNAME-TAKEN TO TRUE
 
        PERFORM UNTIL USERNAME-FREE
-           MOVE "Please enter a username (no spaces):" TO W-MSG
+           MOVE "Please enter a username (No Space/Special Characters):" TO W-MSG
            PERFORM DISP-MSG
            PERFORM READ-INPUT-RAW
 
@@ -455,17 +455,22 @@ VALIDATE-USERNAME.
         EXIT PARAGRAPH
     END-IF
 
-    *> reject if any space inside the content
+    *> reject if any space OR special char exists
     PERFORM VARYING I FROM 1 BY 1 UNTIL I > USERNAME-LEN
         IF W-USERNAME(I:1) = SPACE
+            EXIT PARAGRAPH
+        END-IF
+
+        *> allow only digits and letters (A-Z, a-z, 0-9)
+        IF NOT ( (W-USERNAME(I:1) >= "0" AND W-USERNAME(I:1) <= "9")
+              OR (W-USERNAME(I:1) >= "A" AND W-USERNAME(I:1) <= "Z")
+              OR (W-USERNAME(I:1) >= "a" AND W-USERNAME(I:1) <= "z") )
             EXIT PARAGRAPH
         END-IF
     END-PERFORM
 
     MOVE "Y" TO USERNAME-OK
     EXIT.
-
-
 
 VALIDATE-PASSWORD.
        *> Initialize password requirements as not met
