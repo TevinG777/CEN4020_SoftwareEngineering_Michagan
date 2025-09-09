@@ -32,9 +32,24 @@ WORKING-STORAGE SECTION.
 01 W-USR-INPT PIC X(100).
 01 W-USERNAME PIC X(32).
 01 W-PASSWORD PIC X(12).
+
+*> Validation variables for username
+01 USERNAME-LEN          PIC 9(4) COMP.
+01 USERNAME-OK           PIC X VALUE "N".
+   88 VALID-USERNAME     VALUE "Y".
+   88 INVALID-USERNAME   VALUE "N".
+
+
+01 W-PASS-CANDIDATE PIC X(100). *> Temp storage for password validation
 *> Loop counters with storage from 00-99 and stored as binary for fast computations
 01 i         pic 9(2) comp.
 01 j         pic 9(2) comp.
+
+*> Bool flag to see if user creation was successful
+01 CREATED-FLAG        PIC X VALUE "N".
+   88 CREATED-OK       VALUE "Y".
+   88 NOT-CREATED      VALUE "N".
+
 
 *> User creation variables each variable has child boolean flags which are related to the parent
 01 LOGIN-OK                PIC X VALUE "N".
@@ -52,7 +67,9 @@ WORKING-STORAGE SECTION.
        88 OK-DIGIT         VALUE "Y".
 01 HAS-SPECIAL             PIC X VALUE "N".
        88 OK-SPECIAL       VALUE "Y".
-01 PW-LEN                  PIC 99 COMP.
+
+*> Length of the password after trimming but before truncation giving headroom for validation
+01 PW-LEN                  PIC 9(4) COMP.
 
 
 *> live storage for 5 user accounts with 12 character passwd
@@ -96,41 +113,53 @@ MAIN-SECTION.
            PERFORM READ-INPUT
        END-PERFORM
 
+       *> Set the NOT-CREATED flag to true to start
+       SET NOT-CREATED TO TRUE
+
        *> Process good input
        IF W-USR-INPT = "createnewaccount"
            *> if create new account is selected
            PERFORM CREATE-ACCOUNT
 
-           *> Only login if user creation was successful
-           IF USER-FOUND = "Y"
-               *> Login using most recent saved creds
+           *> Auto-login only if create actually succeeded
+           IF CREATED-OK
                MOVE USER-USERNAME(USER-COUNT) TO W-USERNAME
                MOVE USER-PASSWORD(USER-COUNT) TO W-PASSWORD
                PERFORM LOG-IN
+               SET NOT-CREATED TO TRUE  *> reset flag so it doesn’t affect later logic
            END-IF
+
        ELSE
            SET NOT-FOUND TO TRUE
 
-           *> Keep asking for username and password until the user gets a right
+           *> Keep asking for username and password until the user gets it right
            PERFORM UNTIL FOUND
                MOVE "Please enter your username:" TO W-MSG
                PERFORM DISP-MSG
                PERFORM READ-INPUT-RAW
-               MOVE W-USR-INPT TO W-USERNAME
+               PERFORM VALIDATE-USERNAME
 
-               MOVE "Please enter your password:" TO W-MSG
-               PERFORM DISP-MSG
-               PERFORM READ-INPUT-RAW
-               MOVE W-USR-INPT TO W-PASSWORD
+               IF VALID-USERNAME
+                   MOVE "Please enter your password:" TO W-MSG
+                   PERFORM DISP-MSG
+                   PERFORM READ-INPUT-RAW
 
-               PERFORM LOG-IN
-           END-PERFORM
+                   IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 12
+                       MOVE "Password too long (max 12)." TO W-MSG
+                       PERFORM DISP-MSG
+                   ELSE
+                       MOVE FUNCTION TRIM(W-USR-INPT) TO W-PASSWORD
+                       PERFORM LOG-IN
+                   END-IF
+               ELSE
+                   MOVE "Invalid username (no spaces, not blank)." TO W-MSG
+                   PERFORM DISP-MSG
+           END-IF
+END-PERFORM
+
        END-IF.
 
-
-*> If the user login/account creation was successful then navigate to the post-login menu
-
-
+       *> If the user login/account creation was successful then navigate to the post-login menu
        IF FOUND
            PERFORM POST-LOGIN-NAVIGATION
        END-IF.
@@ -271,7 +300,10 @@ READ-INPUT-RAW.
               CLOSE I-FILE U-FILE O-FILE
               STOP RUN
            NOT AT END
-              MOVE FUNCTION TRIM(W-TMP) TO W-USR-INPT
+              *> Just trim leading and trailing spaces
+              MOVE FUNCTION TRIM(FUNCTION TRIM(W-TMP LEADING) TRAILING) TO W-USR-INPT
+
+
        END-READ.
        EXIT.
 
@@ -323,51 +355,68 @@ LOAD-USERS.
        EXIT.
 
 CREATE-ACCOUNT.
-    *> Account limit check
-    IF USER-COUNT >= 5
-        MOVE "All permitted accounts have been created, please come back later" TO W-MSG
-        PERFORM DISP-MSG
-        EXIT PARAGRAPH
-    END-IF
+       *> Account limit check
+       IF USER-COUNT >= 5
+           MOVE "All permitted accounts have been created, please come back later" TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
 
-    *> Prompt for a unique username (case-insensitive uniqueness)
-    SET USERNAME-TAKEN TO TRUE
-    PERFORM UNTIL USERNAME-FREE
-        MOVE "Please enter a username:" TO W-MSG
-        PERFORM DISP-MSG
-        PERFORM READ-INPUT-RAW
-        MOVE FUNCTION TRIM(W-USR-INPT) TO W-USERNAME
-        PERFORM CHECK-USERNAME-UNIQUE
-        IF USERNAME-TAKEN
-            MOVE "Username already exists. Please choose another." TO W-MSG
-            PERFORM DISP-MSG
-        END-IF
-    END-PERFORM
+       *> Prompt for a unique username (case-insensitive uniqueness)
+       SET USERNAME-TAKEN TO TRUE
 
-    *> Prompt until password satisfies all rules
-    PERFORM UNTIL VALID-PASS
-        MOVE "Please enter a password (8-12 chars, 1 uppercase, 1 digit, 1 special):" TO W-MSG
-        PERFORM DISP-MSG
-        PERFORM READ-INPUT-RAW
-        MOVE FUNCTION TRIM(W-USR-INPT) TO W-PASSWORD
-        PERFORM VALIDATE-PASSWORD
-        IF INVALID-PASS
-            MOVE "Password does not meet requirements. Try again." TO W-MSG
-            PERFORM DISP-MSG
-        END-IF
-    END-PERFORM
+       PERFORM UNTIL USERNAME-FREE
+           MOVE "Please enter a username (no spaces):" TO W-MSG
+           PERFORM DISP-MSG
+           PERFORM READ-INPUT-RAW
 
-    *> Create new user profile in memory
-    ADD 1 TO USER-COUNT
-    MOVE W-USERNAME TO USER-USERNAME(USER-COUNT)
-    MOVE W-PASSWORD TO USER-PASSWORD(USER-COUNT)
+           PERFORM VALIDATE-USERNAME
 
-    *> Persist to file as "username:password"
-    PERFORM APPEND-USER-TO-FILE
+           IF VALID-USERNAME
+               PERFORM CHECK-USERNAME-UNIQUE
+               IF USERNAME-TAKEN
+                   MOVE "Username already exists. Please choose another." TO W-MSG
+                   PERFORM DISP-MSG
+               END-IF
+           ELSE
+               MOVE "Invalid username: No spaces allowed." TO W-MSG
+               PERFORM DISP-MSG
+               *> do NOT run CHECK-USERNAME-UNIQUE here
+           END-IF
+       END-PERFORM
 
-    MOVE "Account created successfully!" TO W-MSG
-    PERFORM DISP-MSG
-    EXIT.
+       *> Prompt until password satisfies all rules
+       PERFORM UNTIL VALID-PASS
+           MOVE "Please enter a password (8-12 chars, 1 uppercase, 1 digit, 1 special, no spaces):" TO W-MSG
+           PERFORM DISP-MSG
+
+          PERFORM READ-INPUT-RAW
+          MOVE FUNCTION TRIM(W-USR-INPT) TO W-PASS-CANDIDATE
+          PERFORM VALIDATE-PASSWORD
+
+          IF INVALID-PASS
+              MOVE "Password does not meet requirements. Try again." TO W-MSG
+              PERFORM DISP-MSG
+          ELSE
+              *> now it's safe to store (truncate to actual length, max 12)
+              MOVE SPACES TO W-PASSWORD
+              MOVE W-PASS-CANDIDATE(1:PW-LEN) TO W-PASSWORD
+          END-IF
+       END-PERFORM
+
+       *> Create new user profile in memory
+       ADD 1 TO USER-COUNT
+       MOVE W-USERNAME TO USER-USERNAME(USER-COUNT)
+       MOVE W-PASSWORD TO USER-PASSWORD(USER-COUNT)
+
+       *> Persist to file as "username:password"
+       PERFORM APPEND-USER-TO-FILE
+
+       *> Set the CREATED-OK flag to true to indicate success
+       SET CREATED-OK TO TRUE
+       MOVE "Account created successfully!" TO W-MSG
+       PERFORM DISP-MSG
+       EXIT.
 
 
 CHECK-USERNAME-UNIQUE.
@@ -393,32 +442,60 @@ CHECK-USERNAME-UNIQUE.
     END-IF
     EXIT.
 
+VALIDATE-USERNAME.
+    MOVE "N" TO USERNAME-OK
+
+    *> trim leading and trailing spaces
+    MOVE FUNCTION TRIM(FUNCTION TRIM(W-USR-INPT LEADING) TRAILING) TO W-USERNAME
+
+    *> true content length, not declared size
+    MOVE FUNCTION LENGTH(FUNCTION TRIM(W-USERNAME TRAILING)) TO USERNAME-LEN
+
+    IF USERNAME-LEN = 0
+        EXIT PARAGRAPH
+    END-IF
+
+    *> reject if any space inside the content
+    PERFORM VARYING I FROM 1 BY 1 UNTIL I > USERNAME-LEN
+        IF W-USERNAME(I:1) = SPACE
+            EXIT PARAGRAPH
+        END-IF
+    END-PERFORM
+
+    MOVE "Y" TO USERNAME-OK
+    EXIT.
+
+
+
 VALIDATE-PASSWORD.
        *> Initialize password requirements as not met
        MOVE "N" TO PASS-OK HAS-UPPER HAS-DIGIT HAS-SPECIAL
        MOVE 0 TO PW-LEN
 
-       *> Compute length up to last non-space, allow a max of 12 characters
-       PERFORM VARYING I FROM 1 BY 1 UNTIL I > 12
-           IF W-PASSWORD(I:1) NOT = SPACE
-               MOVE I TO PW-LEN
-           END-IF
-       END-PERFORM
+       *> true length after trimming (no truncation to 12 yet)
+       MOVE FUNCTION LENGTH(FUNCTION TRIM(W-PASS-CANDIDATE)) TO PW-LEN
+
+
+       *> hard reject if out of bounds
+       IF PW-LEN < 8 OR PW-LEN > 12
+           MOVE "N" TO PASS-OK
+           EXIT PARAGRAPH
+       END-IF
 
        *> Scan characters for required classes
        PERFORM VARYING I FROM 1 BY 1 UNTIL I > PW-LEN
            *> Check to see if any of the characters are uppercase letters
-           IF W-PASSWORD(I:1) >= "A" AND W-PASSWORD(I:1) <= "Z"
+           IF W-PASS-CANDIDATE(I:1) >= "A" AND W-PASS-CANDIDATE(I:1) <= "Z"
                MOVE "Y" TO HAS-UPPER
            ELSE
                *> Check to see if any of the characters are digits
-               IF W-PASSWORD(I:1) >= "0" AND W-PASSWORD(I:1) <= "9"
+               IF W-PASS-CANDIDATE(I:1) >= "0" AND W-PASS-CANDIDATE(I:1) <= "9"
                    MOVE "Y" TO HAS-DIGIT
                ELSE
                    *> Check to see if the character is not a digit, capital or lowercase letter, if so then special character
-                   IF (W-PASSWORD(I:1) < "0" OR W-PASSWORD(I:1) > "9") AND
-                      (W-PASSWORD(I:1) < "A" OR W-PASSWORD(I:1) > "Z") AND
-                      (W-PASSWORD(I:1) < "a" OR W-PASSWORD(I:1) > "z")
+                   IF (W-PASS-CANDIDATE(I:1) < "0" OR W-PASS-CANDIDATE(I:1) > "9") AND
+                      (W-PASS-CANDIDATE(I:1) < "A" OR W-PASS-CANDIDATE(I:1) > "Z") AND
+                      (W-PASS-CANDIDATE(I:1) < "a" OR W-PASS-CANDIDATE(I:1) > "z")
                        MOVE "Y" TO HAS-SPECIAL
                    END-IF
                END-IF
