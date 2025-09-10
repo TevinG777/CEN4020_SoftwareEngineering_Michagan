@@ -1,5 +1,5 @@
 Scrum Master	Skyla Fitzgerald
 Developer #1	Tevin Gajadhar
 Developer #2	Henrique Gamonal De Castro
-Tester #1	Martin Ganen-Villa
-Tester #2	Devon Gardner
+Tester #1	    Martin Ganen-Villa
+Tester #2	    Devon Gardner
