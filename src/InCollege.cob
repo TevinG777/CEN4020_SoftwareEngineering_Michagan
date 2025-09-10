@@ -314,8 +314,17 @@ LOG-IN.
         IF FUNCTION TRIM(USER-USERNAME(UX)) = FUNCTION TRIM(W-USERNAME) AND
         FUNCTION TRIM(USER-PASSWORD(UX)) = FUNCTION TRIM(W-PASSWORD)
          MOVE "You have successfully logged in." TO W-MSG
-         SET FOUND TO TRUE
+
+         MOVE SPACES TO W-MSG
+         STRING
+             "Welcome, "                 DELIMITED BY SIZE
+             FUNCTION TRIM(W-USERNAME)   DELIMITED BY SIZE
+             "!"                         DELIMITED BY SIZE
+         INTO W-MSG
+         END-STRING
          PERFORM DISP-MSG
+
+         SET FOUND TO TRUE
          EXIT PERFORM
         END-IF
     END-PERFORM

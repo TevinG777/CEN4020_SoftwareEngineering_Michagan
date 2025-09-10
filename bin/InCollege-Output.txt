@@ -2,9 +2,10 @@ Welcome to InCollege!
 Log In
 Create New Account
 Enter your choice:
-Please enter your username:
-Please enter your password:
-You have successfully logged in.
+Please enter a username (No Space/Special Characters):
+Please enter a password (8-12 chars, 1 uppercase, 1 digit, 1 special, no spaces):
+Account created successfully!
+Welcome, Tevin!
 You are now logged in. Please select an option:
 1. Search for a job
 2. Find someone you know
@@ -18,46 +19,4 @@ You are now logged in. Please select an option:
 3. Learn a new skill
 4. Return to main menu
 Enter choice (1-4):
-Find someone you know is under construction.
-You are now logged in. Please select an option:
-1. Search for a job
-2. Find someone you know
-3. Learn a new skill
-4. Return to main menu
-Enter choice (1-4):
-Learn a New Skill - choose one from the list:
-1. Public Speaking
-2. Microsoft Excel
-3. Time Management
-4. Leadership
-5. Coding Fundamentals
-6. Return to previous menu
-Enter choice (1-6):
-This skill page is under construction.
-Learn a New Skill - choose one from the list:
-1. Public Speaking
-2. Microsoft Excel
-3. Time Management
-4. Leadership
-5. Coding Fundamentals
-6. Return to previous menu
-Enter choice (1-6):
-This skill page is under construction.
-Learn a New Skill - choose one from the list:
-1. Public Speaking
-2. Microsoft Excel
-3. Time Management
-4. Leadership
-5. Coding Fundamentals
-6. Return to previous menu
-Enter choice (1-6):
-This skill page is under construction.
-Learn a New Skill - choose one from the list:
-1. Public Speaking
-2. Microsoft Excel
-3. Time Management
-4. Leadership
-5. Coding Fundamentals
-6. Return to previous menu
-Enter choice (1-6):
 NO MORE INPUT
