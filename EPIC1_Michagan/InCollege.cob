@@ -164,7 +164,7 @@ END-PERFORM
            PERFORM POST-LOGIN-NAVIGATION
        END-IF.
 POST-LOGIN-NAVIGATION.
-       MOVE "You are now logged in. Please select an option:" TO W-MSG
+       MOVE "Please select an option:" TO W-MSG
        PERFORM DISP-MSG
        MOVE "1. Search for a job" TO W-MSG
        PERFORM DISP-MSG
@@ -262,9 +262,6 @@ DISP-MSG.
 READ-INPUT.
        READ I-FILE INTO W-TMP
            AT END
-               MOVE "NO MORE INPUT" TO W-MSG
-               *> When there is no more user input display that and exit the program
-               PERFORM DISP-MSG
 
                *> Close the input and output files
               CLOSE I-FILE U-FILE O-FILE
