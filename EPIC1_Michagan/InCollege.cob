@@ -155,16 +155,23 @@ MAIN-SECTION.
                    MOVE "Invalid username (no spaces, not blank)." TO W-MSG
                    PERFORM DISP-MSG
            END-IF
-END-PERFORM
+           END-PERFORM
 
        END-IF.
 
-       *> If the user login/account creation was successful then navigate to the post-login menu
-       IF FOUND
+       *> If user is has failed to create then exit the program
+         IF FOUND OR CREATED-OK
            PERFORM POST-LOGIN-NAVIGATION
-       END-IF.
+         ELSE
+           *> Close all files and end program
+           CLOSE I-FILE U-FILE O-FILE
+           PERFORM PROGRAM-END
+         END-IF
+
+GO TO PROGRAM-END.
+
 POST-LOGIN-NAVIGATION.
-       MOVE "You are now logged in. Please select an option:" TO W-MSG
+       MOVE "Please select an option:" TO W-MSG
        PERFORM DISP-MSG
        MOVE "1. Search for a job" TO W-MSG
        PERFORM DISP-MSG
@@ -262,10 +269,6 @@ DISP-MSG.
 READ-INPUT.
        READ I-FILE INTO W-TMP
            AT END
-               MOVE "NO MORE INPUT" TO W-MSG
-               *> When there is no more user input display that and exit the program
-               PERFORM DISP-MSG
-
                *> Close the input and output files
               CLOSE I-FILE U-FILE O-FILE
 
@@ -292,10 +295,6 @@ READ-INPUT.
 READ-INPUT-RAW.
        READ I-FILE INTO W-TMP
            AT END
-              *> When there is no more user input display that and exit the program
-              MOVE "NO MORE INPUT" TO W-MSG
-              PERFORM DISP-MSG
-
               *> Close the input and output files
               CLOSE I-FILE U-FILE O-FILE
               STOP RUN
@@ -377,6 +376,9 @@ CREATE-ACCOUNT.
        *> Account limit check
        IF USER-COUNT >= 5
            MOVE "All permitted accounts have been created, please come back later" TO W-MSG
+
+           *> Set the CREATED-OK flag to false to indicate failure
+           SET NOT-CREATED TO TRUE
            PERFORM DISP-MSG
            EXIT PARAGRAPH
        END-IF
@@ -547,3 +549,6 @@ APPEND-USER-TO-FILE.
        WRITE U-REC
        CLOSE U-FILE
        EXIT.
+
+PROGRAM-END.
+    STOP RUN.
