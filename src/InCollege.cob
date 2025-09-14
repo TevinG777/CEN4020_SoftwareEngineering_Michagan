@@ -140,6 +140,12 @@ WORKING-STORAGE SECTION.
    88 IN-BEGIN       VALUE 'Y'.
 01 W-YEAR-TEXT-VIEW  PIC X(4).
 
+*> Generic prompt helpers
+01 W-PROMPT          PIC X(100).
+01 W-RETRY           PIC X(100).
+01 W-OUTPUT          PIC X(300).
+01 W-OUTPUT-LONG     PIC X(500).
+
 
 
 
@@ -665,46 +671,26 @@ CREATE-EDIT-PROFILE.
        MOVE " --- Create/Edit Profile --- " TO W-MSG PERFORM DISP-MSG
 
        *> Required fields (non-blank)
-       MOVE "Please enter First Name:" TO W-MSG PERFORM DISP-MSG
-       PERFORM CLEAR-INPUT
-       PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-           PERFORM READ-INPUT-RAW
-           IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-               MOVE "First Name is required. Re-enter:" TO W-MSG PERFORM DISP-MSG
-           END-IF
-       END-PERFORM
-       MOVE FUNCTION TRIM(W-USR-INPT) TO FIRST-NAME
+       MOVE "Please enter First Name:"          TO W-PROMPT
+       MOVE "First Name is required. Re-enter:" TO W-RETRY
+       PERFORM PROMPT-REQUIRED-FIELD
+       MOVE W-OUTPUT TO FIRST-NAME
 
 
-       MOVE "Please enter Last Name:" TO W-MSG PERFORM DISP-MSG
-       PERFORM CLEAR-INPUT
-       PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-           PERFORM READ-INPUT-RAW
-           IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-               MOVE "Last Name is required. Re-enter:" TO W-MSG PERFORM DISP-MSG
-           END-IF
-       END-PERFORM
-       MOVE FUNCTION TRIM(W-USR-INPT) TO LAST-NAME
+       MOVE "Please enter Last Name:"          TO W-PROMPT
+       MOVE "Last Name is required. Re-enter:" TO W-RETRY
+       PERFORM PROMPT-REQUIRED-FIELD
+       MOVE W-OUTPUT TO LAST-NAME
 
-       MOVE "Please enter University/College Attended:" TO W-MSG PERFORM DISP-MSG
-       PERFORM CLEAR-INPUT
-        PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-           PERFORM READ-INPUT-RAW
-           IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-               MOVE "University/College is required. Re-enter:" TO W-MSG PERFORM DISP-MSG
-           END-IF
-       END-PERFORM
-       MOVE FUNCTION TRIM(W-USR-INPT) TO UNIVERSITY
+       MOVE "Please enter University/College Attended:" TO W-PROMPT
+       MOVE "University/College is required. Re-enter:" TO W-RETRY
+       PERFORM PROMPT-REQUIRED-FIELD
+       MOVE W-OUTPUT TO UNIVERSITY
 
-       MOVE "Please enter Major:" TO W-MSG PERFORM DISP-MSG
-       PERFORM CLEAR-INPUT
-       PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-           PERFORM READ-INPUT-RAW
-           IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-               MOVE "Major is required. Re-enter:" TO W-MSG PERFORM DISP-MSG
-           END-IF
-       END-PERFORM
-       MOVE FUNCTION TRIM(W-USR-INPT) TO MAJOR
+       MOVE "Please enter Major:"          TO W-PROMPT
+       MOVE "Major is required. Re-enter:" TO W-RETRY
+       PERFORM PROMPT-REQUIRED-FIELD
+       MOVE W-OUTPUT TO MAJOR
 
        *> Grad year: exactly 4 digits between 1900 and 2100
        MOVE "Enter Graduation Year (YYYY):" TO W-MSG PERFORM DISP-MSG
@@ -725,24 +711,9 @@ CREATE-EDIT-PROFILE.
 
 
        *> About Me (optional, multiline; finish with END)
-       MOVE "About Me (optional). Type lines; enter END on its own line to finish:" TO W-MSG PERFORM DISP-MSG
-       PERFORM CLEAR-INPUT
-       MOVE SPACES TO ABOUT-ME
-       PERFORM UNTIL FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "END"
-           PERFORM READ-INPUT-RAW
-           IF FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) NOT = "END"
-               MOVE FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) TO LEN
-               IF LEN > 0
-                   STRING ABOUT-ME DELIMITED BY SIZE
-                          " "      DELIMITED BY SIZE
-                          W-USR-INPT DELIMITED BY SIZE
-                     INTO ABOUT-ME
-                   END-STRING
-               ELSE
-                   MOVE W-USR-INPT TO ABOUT-ME
-               END-IF
-           END-IF
-       END-PERFORM
+       MOVE "About Me (optional). Type lines; enter END on its own line to finish:" TO W-PROMPT
+       PERFORM CAPTURE-MULTILINE-UNTIL-END
+       MOVE W-OUTPUT-LONG TO ABOUT-ME
 
        *> Experiences (0..3)
        MOVE 0 TO EXP-COUNT
@@ -755,55 +726,24 @@ CREATE-EDIT-PROFILE.
            END-IF
            ADD 1 TO EXP-COUNT
 
-           MOVE "Title (required):" TO W-MSG PERFORM DISP-MSG
-           PERFORM CLEAR-INPUT
-           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-               PERFORM READ-INPUT-RAW
-               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-                   MOVE "Title required. Re-enter:" TO W-MSG PERFORM DISP-MSG
-               END-IF
-           END-PERFORM
-           MOVE FUNCTION TRIM(W-USR-INPT) TO EXP-TITLE(EXP-COUNT)
+           MOVE "Title (required):"         TO W-PROMPT
+           MOVE "Title required. Re-enter:" TO W-RETRY
+           PERFORM PROMPT-REQUIRED-FIELD
+           MOVE W-OUTPUT TO EXP-TITLE(EXP-COUNT)
 
-           MOVE "Company/Organization (required):" TO W-MSG PERFORM DISP-MSG
-           PERFORM CLEAR-INPUT
-           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-               PERFORM READ-INPUT-RAW
-               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-                   MOVE "Company required. Re-enter:" TO W-MSG PERFORM DISP-MSG
-               END-IF
-           END-PERFORM
-           MOVE FUNCTION TRIM(W-USR-INPT) TO EXP-COMPANY(EXP-COUNT)
+           MOVE "Company/Organization (required):" TO W-PROMPT
+           MOVE "Company required. Re-enter:"      TO W-RETRY
+           PERFORM PROMPT-REQUIRED-FIELD
+           MOVE W-OUTPUT TO EXP-COMPANY(EXP-COUNT)
 
-           MOVE "Dates ('Summer 2024' or 'Jan 2023 - May 2024') (required):" TO W-MSG PERFORM DISP-MSG
-           PERFORM CLEAR-INPUT
-           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-               PERFORM READ-INPUT-RAW
-               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-                   MOVE "Dates required. Re-enter:" TO W-MSG PERFORM DISP-MSG
-               END-IF
-           END-PERFORM
-           MOVE FUNCTION TRIM(W-USR-INPT) TO EXP-DATES(EXP-COUNT)
+           MOVE "Dates ('Summer 2024' or 'Jan 2023 - May 2024') (required):" TO W-PROMPT
+           MOVE "Dates required. Re-enter:"                                         TO W-RETRY
+           PERFORM PROMPT-REQUIRED-FIELD
+           MOVE W-OUTPUT TO EXP-DATES(EXP-COUNT)
 
-           MOVE "Short description (optional). Type END to finish description:" TO W-MSG PERFORM DISP-MSG
-           MOVE SPACES TO EXP-DESC(EXP-COUNT)
-           PERFORM CLEAR-INPUT
-           PERFORM UNTIL FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "END"
-               PERFORM READ-INPUT-RAW
-               IF FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "END"
-                   EXIT PERFORM
-               END-IF
-               MOVE FUNCTION LENGTH(FUNCTION TRIM(EXP-DESC(EXP-COUNT))) TO LEN
-               IF LEN > 0
-                   STRING EXP-DESC(EXP-COUNT) DELIMITED BY SIZE
-                          " "                 DELIMITED BY SIZE
-                          W-USR-INPT          DELIMITED BY SIZE
-                     INTO EXP-DESC(EXP-COUNT)
-                   END-STRING
-               ELSE
-                   MOVE W-USR-INPT TO EXP-DESC(EXP-COUNT)
-               END-IF
-           END-PERFORM
+           MOVE "Short description (optional). Type END to finish description:" TO W-PROMPT
+           PERFORM CAPTURE-MULTILINE-UNTIL-END
+           MOVE W-OUTPUT-LONG TO EXP-DESC(EXP-COUNT)
        END-PERFORM
 
        *> Education
@@ -817,35 +757,20 @@ CREATE-EDIT-PROFILE.
            END-IF
            ADD 1 TO EDU-COUNT
 
-           MOVE "Degree (required):" TO W-MSG PERFORM DISP-MSG
-           PERFORM CLEAR-INPUT
-           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-               PERFORM READ-INPUT-RAW
-               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-                   MOVE "Degree required. Re-enter:" TO W-MSG PERFORM DISP-MSG
-               END-IF
-           END-PERFORM
-           MOVE FUNCTION TRIM(W-USR-INPT) TO EDU-DEGREE(EDU-COUNT)
+           MOVE "Degree (required):"         TO W-PROMPT
+           MOVE "Degree required. Re-enter:" TO W-RETRY
+           PERFORM PROMPT-REQUIRED-FIELD
+           MOVE W-OUTPUT TO EDU-DEGREE(EDU-COUNT)
 
-           MOVE "University/College (required):" TO W-MSG PERFORM DISP-MSG
-           PERFORM CLEAR-INPUT
-           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-               PERFORM READ-INPUT-RAW
-               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-                   MOVE "University required. Re-enter:" TO W-MSG PERFORM DISP-MSG
-               END-IF
-           END-PERFORM
-           MOVE FUNCTION TRIM(W-USR-INPT) TO EDU-UNIV(EDU-COUNT)
+           MOVE "University/College (required):" TO W-PROMPT
+           MOVE "University required. Re-enter:"  TO W-RETRY
+           PERFORM PROMPT-REQUIRED-FIELD
+           MOVE W-OUTPUT TO EDU-UNIV(EDU-COUNT)
 
-           MOVE "Years Attended (e.g., 2023-2025) (required):" TO W-MSG PERFORM DISP-MSG
-           PERFORM CLEAR-INPUT
-           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-               PERFORM READ-INPUT-RAW
-               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-                   MOVE "Years Attended required. Re-enter:" TO W-MSG PERFORM DISP-MSG
-               END-IF
-           END-PERFORM
-           MOVE FUNCTION TRIM(W-USR-INPT) TO EDU-YEARS(EDU-COUNT)
+           MOVE "Years Attended (e.g., 2023-2025) (required):" TO W-PROMPT
+           MOVE "Years Attended required. Re-enter:"            TO W-RETRY
+           PERFORM PROMPT-REQUIRED-FIELD
+           MOVE W-OUTPUT TO EDU-YEARS(EDU-COUNT)
        END-PERFORM
 
        PERFORM SAVE-PROFILE-TO-FILE
@@ -1028,6 +953,41 @@ PROGRAM-END.
 CLEAR-INPUT.
        MOVE SPACES TO W-USR-INPT W-TMP W-RAW W-CLEAN
        MOVE 0 TO I J
+       EXIT.
+
+*> Prompt for a required single-line field; returns trimmed value in W-OUTPUT
+PROMPT-REQUIRED-FIELD.
+       MOVE W-PROMPT TO W-MSG PERFORM DISP-MSG
+       PERFORM CLEAR-INPUT
+       PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+               MOVE W-RETRY TO W-MSG PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
+       MOVE FUNCTION TRIM(W-USR-INPT) TO W-OUTPUT
+       EXIT.
+
+*> Capture optional multi-line text until a line with END; returns in W-OUTPUT-LONG
+CAPTURE-MULTILINE-UNTIL-END.
+       MOVE W-PROMPT TO W-MSG PERFORM DISP-MSG
+       PERFORM CLEAR-INPUT
+       MOVE SPACES TO W-OUTPUT-LONG
+       PERFORM UNTIL FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "END"
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) NOT = "END"
+               MOVE FUNCTION LENGTH(FUNCTION TRIM(W-OUTPUT-LONG)) TO LEN
+               IF LEN > 0
+                   STRING W-OUTPUT-LONG DELIMITED BY SIZE
+                          " "           DELIMITED BY SIZE
+                          W-USR-INPT    DELIMITED BY SIZE
+                      INTO W-OUTPUT-LONG
+                   END-STRING
+               ELSE
+                   MOVE W-USR-INPT TO W-OUTPUT-LONG
+               END-IF
+           END-IF
+       END-PERFORM
        EXIT.
 
 *> Reset profile WS before parsing/printing
