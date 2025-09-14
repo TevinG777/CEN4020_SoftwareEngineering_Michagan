@@ -9,35 +9,25 @@ Please select an option:
 1. Search for a job
 2. Find someone you know
 3. Learn a new skill
-4. Return to main menu
-Enter choice (1-4):
-Job search is under construction.
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
+Name: Tevin Gajadhar
+University: University of South Florida
+Major: Comptuer Science
+Graduation Year: 2026
+About Me:
+    BEGIN
+Experiences:
+    (none)
+Education:
+    (none)
 Please select an option:
 1. Search for a job
 2. Find someone you know
 3. Learn a new skill
-4. Return to main menu
-Enter choice (1-4):
-Learn a New Skill - choose one from the list:
-1. Public Speaking
-2. Microsoft Excel
-3. Time Management
-4. Leadership
-5. Coding Fundamentals
-6. Return to previous menu
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
 Enter choice (1-6):
-This skill page is under construction.
-Learn a New Skill - choose one from the list:
-1. Public Speaking
-2. Microsoft Excel
-3. Time Management
-4. Leadership
-5. Coding Fundamentals
-6. Return to previous menu
-Enter choice (1-6):
-Please select an option:
-1. Search for a job
-2. Find someone you know
-3. Learn a new skill
-4. Return to main menu
-Enter choice (1-4):

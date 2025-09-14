@@ -12,6 +12,10 @@ FILE-CONTROL.
            ORGANIZATION IS LINE SEQUENTIAL.
        SELECT U-FILE ASSIGN TO "bin/InCollege-Users.txt"
            ORGANIZATION IS LINE SEQUENTIAL.
+       SELECT P-FILE ASSIGN TO DYNAMIC W-PROFILE-PATH
+           ORGANIZATION IS LINE SEQUENTIAL
+           FILE STATUS IS P-STAT.
+
 
 DATA DIVISION.
 FILE SECTION.
@@ -23,6 +27,10 @@ FD O-FILE.
 
 FD U-FILE.
 01 U-REC   PIC X(100).
+
+FD P-FILE.
+01 P-REC   PIC X(512).
+
 
 WORKING-STORAGE SECTION.
 01 W-MSG   PIC X(100).
@@ -81,6 +89,57 @@ WORKING-STORAGE SECTION.
        05 USER-ENTRY OCCURS 5 TIMES INDEXED BY UX.
           10 USER-USERNAME  PIC X(32).
           10 USER-PASSWORD  PIC X(12).
+
+
+*> Profile paths and status
+01 W-PROFILE-PATH   PIC X(256).
+01 P-STAT           PIC XX.
+01 W-USER-LOW       PIC X(32).
+
+*> User profile fields
+01 FIRST-NAME       PIC X(30).
+01 LAST-NAME        PIC X(30).
+01 UNIVERSITY       PIC X(60).
+01 MAJOR            PIC X(40).
+01 GRAD-YEAR        PIC 9(4).
+01 W-YEAR-TEXT      PIC X(4).
+
+01 ABOUT-ME         PIC X(500).
+
+01 EXP-COUNT        PIC 9     VALUE 0.
+01 EXPERIENCE OCCURS 3 TIMES.
+   05 EXP-TITLE     PIC X(40).
+   05 EXP-COMPANY   PIC X(40).
+   05 EXP-DATES     PIC X(40).
+   05 EXP-DESC      PIC X(300).
+
+01 EDU-COUNT        PIC 9     VALUE 0.
+01 EDUCATION OCCURS 3 TIMES.
+   05 EDU-DEGREE    PIC X(40).
+   05 EDU-UNIV      PIC X(60).
+   05 EDU-YEARS     PIC X(20).
+
+
+01 LEN              PIC 9(4) COMP.
+
+*> Additional storage for clean profile viewing
+01 VIEW-TEXT         PIC X(512).
+01 VIEW-VAL          PIC X(512).
+01 VIEW-LINE         PIC X(512).
+01 VIEW-POS          PIC 9(4) COMP VALUE 1.
+01 VIEW-LEN          PIC 9(4) COMP VALUE 0.
+01 VIEW-CHUNK        PIC 9(4) COMP VALUE 0.
+01 VIEW-IDX          PIC 9(2) COMP VALUE 0.
+01 CURR-EXP-IDX      PIC 9     VALUE 0.
+01 CURR-EDU-IDX      PIC 9     VALUE 0.
+01 MODE-FLAG         PIC X VALUE 'N'.
+   88 MODE-NONE      VALUE 'N'.
+   88 MODE-ABOUT     VALUE 'A'.
+   88 MODE-EXP-DESC  VALUE 'D'.
+01 IN-BLOCK          PIC X VALUE 'N'.
+   88 IN-BEGIN       VALUE 'Y'.
+01 W-YEAR-TEXT-VIEW  PIC X(4).
+
 
 
 
@@ -159,53 +218,54 @@ MAIN-SECTION.
 
        END-IF.
 
-       *> If user is has failed to create then exit the program
-         IF FOUND OR CREATED-OK
+       *> User profile creation
+       IF FOUND OR CREATED-OK
+           PERFORM INIT-PROFILE-FOR-USER
            PERFORM POST-LOGIN-NAVIGATION
-         ELSE
-           *> Close all files and end program
+       ELSE
            CLOSE I-FILE U-FILE O-FILE
            PERFORM PROGRAM-END
-         END-IF
+       END-IF
+
+
 
 GO TO PROGRAM-END.
 
 POST-LOGIN-NAVIGATION.
-       MOVE "Please select an option:" TO W-MSG
-       PERFORM DISP-MSG
-       MOVE "1. Search for a job" TO W-MSG
-       PERFORM DISP-MSG
-       MOVE "2. Find someone you know" TO W-MSG
-       PERFORM DISP-MSG
-       MOVE "3. Learn a new skill" TO W-MSG
-       PERFORM DISP-MSG
-       MOVE "4. Return to main menu" TO W-MSG
-       PERFORM DISP-MSG
-       MOVE "Enter choice (1-4):" TO W-MSG
-       PERFORM DISP-MSG
+       MOVE "Please select an option:" TO W-MSG PERFORM DISP-MSG
+       MOVE "1. Search for a job"      TO W-MSG PERFORM DISP-MSG
+       MOVE "2. Find someone you know" TO W-MSG PERFORM DISP-MSG
+       MOVE "3. Learn a new skill"     TO W-MSG PERFORM DISP-MSG
+       MOVE "4. View my profile"       TO W-MSG PERFORM DISP-MSG
+       MOVE "5. Create/Edit Profile"   TO W-MSG PERFORM DISP-MSG
+       MOVE "6. Return to main menu"   TO W-MSG PERFORM DISP-MSG
+       MOVE "Enter choice (1-6):"      TO W-MSG PERFORM DISP-MSG
        PERFORM READ-INPUT
 
        EVALUATE W-USR-INPT
            WHEN "1"
-               MOVE "Job search is under construction." TO W-MSG
-               PERFORM DISP-MSG
+               MOVE "Job search is under construction." TO W-MSG PERFORM DISP-MSG
                PERFORM POST-LOGIN-NAVIGATION
            WHEN "2"
-               MOVE "Find someone you know is under construction." TO W-MSG
-               PERFORM DISP-MSG
+               MOVE "Find someone you know is under construction." TO W-MSG PERFORM DISP-MSG
                PERFORM POST-LOGIN-NAVIGATION
            WHEN "3"
                PERFORM LEARN-SKILL
            WHEN "4"
-               MOVE "Returning to main menu..." TO W-MSG
-               PERFORM DISP-MSG
+               PERFORM VIEW-PROFILE
+               PERFORM POST-LOGIN-NAVIGATION
+           WHEN "5"
+               PERFORM CREATE-EDIT-PROFILE
+               PERFORM POST-LOGIN-NAVIGATION
+           WHEN "6"
+               MOVE "Returning to main menu..." TO W-MSG PERFORM DISP-MSG
                EXIT
            WHEN OTHER
-               MOVE "Invalid selection. Please try again." TO W-MSG
-               PERFORM DISP-MSG
+               MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
                PERFORM POST-LOGIN-NAVIGATION
        END-EVALUATE
        EXIT.
+
 
 LEARN-SKILL.
        MOVE "Learn a New Skill - choose one from the list:" TO W-MSG
@@ -550,5 +610,713 @@ APPEND-USER-TO-FILE.
        CLOSE U-FILE
        EXIT.
 
+*> USER PROFILE CREATION
+INIT-PROFILE-FOR-USER.
+       *> Normalize username for filename
+       MOVE FUNCTION LOWER-CASE(FUNCTION TRIM(W-USERNAME)) TO W-USER-LOW
+
+       *> Build bin/profiles/<username>.txt
+       MOVE SPACES TO W-PROFILE-PATH
+       STRING
+           "bin/profiles/"                 DELIMITED BY SIZE
+           W-USER-LOW                      DELIMITED BY SPACE
+           ".txt"                          DELIMITED BY SIZE
+         INTO W-PROFILE-PATH
+       END-STRING
+
+       *> Try to open the file. If it doesn't exist, create a skeleton.
+       OPEN INPUT P-FILE
+       IF P-STAT = "00"
+           CLOSE P-FILE
+       ELSE
+           PERFORM SAVE-EMPTY-PROFILE
+       END-IF
+       EXIT.
+
+BUILD-PROFILE-PATH.
+       MOVE FUNCTION LOWER-CASE(FUNCTION TRIM(W-USERNAME)) TO W-USER-LOW
+       MOVE SPACES TO W-PROFILE-PATH
+       STRING
+           "bin/profiles/"        DELIMITED BY SIZE
+           W-USER-LOW             DELIMITED BY SPACE   *> avoids trailing spaces
+           ".txt"                 DELIMITED BY SIZE
+         INTO W-PROFILE-PATH
+       END-STRING
+       EXIT.
+
+
+SAVE-EMPTY-PROFILE.
+       OPEN OUTPUT P-FILE
+
+       MOVE SPACES TO P-REC
+       STRING "USERNAME: " DELIMITED BY SIZE
+              W-USER-LOW   DELIMITED BY SPACE
+         INTO P-REC
+       END-STRING
+       WRITE P-REC
+
+       MOVE "[EOF]" TO P-REC
+       WRITE P-REC
+
+       CLOSE P-FILE
+       EXIT.
+
+CREATE-EDIT-PROFILE.
+       MOVE " --- Create/Edit Profile --- " TO W-MSG PERFORM DISP-MSG
+
+       *> Required fields (non-blank)
+       MOVE "Please enter First Name:" TO W-MSG PERFORM DISP-MSG
+       PERFORM CLEAR-INPUT
+       PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+               MOVE "First Name is required. Re-enter:" TO W-MSG PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
+       MOVE FUNCTION TRIM(W-USR-INPT) TO FIRST-NAME
+
+
+       MOVE "Please enter Last Name:" TO W-MSG PERFORM DISP-MSG
+       PERFORM CLEAR-INPUT
+       PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+               MOVE "Last Name is required. Re-enter:" TO W-MSG PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
+       MOVE FUNCTION TRIM(W-USR-INPT) TO LAST-NAME
+
+       MOVE "Please enter University/College Attended:" TO W-MSG PERFORM DISP-MSG
+       PERFORM CLEAR-INPUT
+        PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+               MOVE "University/College is required. Re-enter:" TO W-MSG PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
+       MOVE FUNCTION TRIM(W-USR-INPT) TO UNIVERSITY
+
+       MOVE "Please enter Major:" TO W-MSG PERFORM DISP-MSG
+       PERFORM CLEAR-INPUT
+       PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+               MOVE "Major is required. Re-enter:" TO W-MSG PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
+       MOVE FUNCTION TRIM(W-USR-INPT) TO MAJOR
+
+       *> Grad year: exactly 4 digits between 1900 and 2100
+       MOVE "Enter Graduation Year (YYYY):" TO W-MSG PERFORM DISP-MSG
+       PERFORM CLEAR-INPUT
+       MOVE 0 TO GRAD-YEAR
+       PERFORM UNTIL GRAD-YEAR >= 1900 AND GRAD-YEAR <= 2100
+           PERFORM READ-INPUT-RAW
+           MOVE FUNCTION TRIM(W-USR-INPT) TO W-YEAR-TEXT
+           IF FUNCTION LENGTH(W-YEAR-TEXT) = 4 AND W-YEAR-TEXT IS NUMERIC
+               MOVE FUNCTION NUMVAL(W-YEAR-TEXT) TO GRAD-YEAR
+               IF GRAD-YEAR < 1900 OR GRAD-YEAR > 2100
+                   MOVE "Year out of range (1900–2100). Re-enter:" TO W-MSG PERFORM DISP-MSG
+               END-IF
+           ELSE
+               MOVE "Invalid format. Enter 4 digits (e.g., 2025):" TO W-MSG PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
+
+
+       *> About Me (optional, multiline; finish with END)
+       MOVE "About Me (optional). Type lines; enter END on its own line to finish:" TO W-MSG PERFORM DISP-MSG
+       PERFORM CLEAR-INPUT
+       MOVE SPACES TO ABOUT-ME
+       PERFORM UNTIL FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "END"
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) NOT = "END"
+               MOVE FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) TO LEN
+               IF LEN > 0
+                   STRING ABOUT-ME DELIMITED BY SIZE
+                          " "      DELIMITED BY SIZE
+                          W-USR-INPT DELIMITED BY SIZE
+                     INTO ABOUT-ME
+                   END-STRING
+               ELSE
+                   MOVE W-USR-INPT TO ABOUT-ME
+               END-IF
+           END-IF
+       END-PERFORM
+
+       *> Experiences (0..3)
+       MOVE 0 TO EXP-COUNT
+       MOVE "Add up to 3 experiences. Type DONE to skip or stop." TO W-MSG PERFORM DISP-MSG
+       PERFORM VARYING I FROM 1 BY 1 UNTIL I > 3
+           MOVE "Add an experience? Enter YES or DONE:" TO W-MSG PERFORM DISP-MSG
+           PERFORM READ-INPUT
+           IF W-USR-INPT = "done"
+               EXIT PERFORM
+           END-IF
+           ADD 1 TO EXP-COUNT
+
+           MOVE "Title (required):" TO W-MSG PERFORM DISP-MSG
+           PERFORM CLEAR-INPUT
+           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+               PERFORM READ-INPUT-RAW
+               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+                   MOVE "Title required. Re-enter:" TO W-MSG PERFORM DISP-MSG
+               END-IF
+           END-PERFORM
+           MOVE FUNCTION TRIM(W-USR-INPT) TO EXP-TITLE(EXP-COUNT)
+
+           MOVE "Company/Organization (required):" TO W-MSG PERFORM DISP-MSG
+           PERFORM CLEAR-INPUT
+           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+               PERFORM READ-INPUT-RAW
+               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+                   MOVE "Company required. Re-enter:" TO W-MSG PERFORM DISP-MSG
+               END-IF
+           END-PERFORM
+           MOVE FUNCTION TRIM(W-USR-INPT) TO EXP-COMPANY(EXP-COUNT)
+
+           MOVE "Dates ('Summer 2024' or 'Jan 2023 - May 2024') (required):" TO W-MSG PERFORM DISP-MSG
+           PERFORM CLEAR-INPUT
+           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+               PERFORM READ-INPUT-RAW
+               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+                   MOVE "Dates required. Re-enter:" TO W-MSG PERFORM DISP-MSG
+               END-IF
+           END-PERFORM
+           MOVE FUNCTION TRIM(W-USR-INPT) TO EXP-DATES(EXP-COUNT)
+
+           MOVE "Short description (optional). Type END to finish description:" TO W-MSG PERFORM DISP-MSG
+           MOVE SPACES TO EXP-DESC(EXP-COUNT)
+           PERFORM CLEAR-INPUT
+           PERFORM UNTIL FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "END"
+               PERFORM READ-INPUT-RAW
+               IF FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "END"
+                   EXIT PERFORM
+               END-IF
+               MOVE FUNCTION LENGTH(FUNCTION TRIM(EXP-DESC(EXP-COUNT))) TO LEN
+               IF LEN > 0
+                   STRING EXP-DESC(EXP-COUNT) DELIMITED BY SIZE
+                          " "                 DELIMITED BY SIZE
+                          W-USR-INPT          DELIMITED BY SIZE
+                     INTO EXP-DESC(EXP-COUNT)
+                   END-STRING
+               ELSE
+                   MOVE W-USR-INPT TO EXP-DESC(EXP-COUNT)
+               END-IF
+           END-PERFORM
+       END-PERFORM
+
+       *> Education
+       MOVE 0 TO EDU-COUNT
+       MOVE "Add up to 3 education entries. Type DONE to skip or stop." TO W-MSG PERFORM DISP-MSG
+       PERFORM VARYING I FROM 1 BY 1 UNTIL I > 3
+           MOVE "Add an education entry? Enter YES or DONE:" TO W-MSG PERFORM DISP-MSG
+           PERFORM READ-INPUT
+           IF W-USR-INPT = "done"
+               EXIT PERFORM
+           END-IF
+           ADD 1 TO EDU-COUNT
+
+           MOVE "Degree (required):" TO W-MSG PERFORM DISP-MSG
+           PERFORM CLEAR-INPUT
+           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+               PERFORM READ-INPUT-RAW
+               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+                   MOVE "Degree required. Re-enter:" TO W-MSG PERFORM DISP-MSG
+               END-IF
+           END-PERFORM
+           MOVE FUNCTION TRIM(W-USR-INPT) TO EDU-DEGREE(EDU-COUNT)
+
+           MOVE "University/College (required):" TO W-MSG PERFORM DISP-MSG
+           PERFORM CLEAR-INPUT
+           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+               PERFORM READ-INPUT-RAW
+               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+                   MOVE "University required. Re-enter:" TO W-MSG PERFORM DISP-MSG
+               END-IF
+           END-PERFORM
+           MOVE FUNCTION TRIM(W-USR-INPT) TO EDU-UNIV(EDU-COUNT)
+
+           MOVE "Years Attended (e.g., 2023-2025) (required):" TO W-MSG PERFORM DISP-MSG
+           PERFORM CLEAR-INPUT
+           PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+               PERFORM READ-INPUT-RAW
+               IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+                   MOVE "Years Attended required. Re-enter:" TO W-MSG PERFORM DISP-MSG
+               END-IF
+           END-PERFORM
+           MOVE FUNCTION TRIM(W-USR-INPT) TO EDU-YEARS(EDU-COUNT)
+       END-PERFORM
+
+       PERFORM SAVE-PROFILE-TO-FILE
+       MOVE "Profile saved successfully." TO W-MSG PERFORM DISP-MSG
+       EXIT.
+
+SAVE-PROFILE-TO-FILE.
+       PERFORM BUILD-PROFILE-PATH
+       OPEN OUTPUT P-FILE
+
+       MOVE SPACES TO P-REC
+       STRING "USERNAME: " DELIMITED BY SIZE
+              W-USER-LOW   DELIMITED BY SPACE
+         INTO P-REC
+       END-STRING
+       WRITE P-REC
+
+       MOVE "[PROFILE]" TO P-REC WRITE P-REC
+
+       MOVE SPACES TO P-REC
+       STRING "FIRST-NAME: " DELIMITED BY SIZE
+              FUNCTION TRIM(FIRST-NAME) DELIMITED BY SIZE
+         INTO P-REC
+       END-STRING
+       WRITE P-REC
+
+       MOVE SPACES TO P-REC
+       STRING "LAST-NAME: " DELIMITED BY SIZE
+              FUNCTION TRIM(LAST-NAME) DELIMITED BY SIZE
+         INTO P-REC
+       END-STRING
+       WRITE P-REC
+
+       MOVE SPACES TO P-REC
+       STRING "UNIVERSITY: " DELIMITED BY SIZE
+              FUNCTION TRIM(UNIVERSITY) DELIMITED BY SIZE
+         INTO P-REC
+       END-STRING
+       WRITE P-REC
+
+       MOVE SPACES TO P-REC
+       STRING "MAJOR: " DELIMITED BY SIZE
+              FUNCTION TRIM(MAJOR) DELIMITED BY SIZE
+         INTO P-REC
+       END-STRING
+       WRITE P-REC
+
+       MOVE GRAD-YEAR TO W-YEAR-TEXT
+       MOVE SPACES TO P-REC
+       STRING "GRAD-YEAR: " DELIMITED BY SIZE
+              W-YEAR-TEXT   DELIMITED BY SIZE
+         INTO P-REC
+       END-STRING
+       WRITE P-REC
+
+
+       MOVE "[/PROFILE]" TO P-REC WRITE P-REC
+
+       MOVE "[ABOUT]" TO P-REC WRITE P-REC
+       IF FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) > 0
+           MOVE ABOUT-ME TO P-REC
+           WRITE P-REC
+       ELSE
+           MOVE SPACES TO P-REC
+           WRITE P-REC
+       END-IF
+       MOVE "END"     TO P-REC WRITE P-REC
+       MOVE "[/ABOUT]" TO P-REC WRITE P-REC
+
+       MOVE "[EXPERIENCES]" TO P-REC WRITE P-REC
+       MOVE SPACES TO P-REC
+       STRING "COUNT: " DELIMITED BY SIZE
+              EXP-COUNT DELIMITED BY SIZE
+         INTO P-REC
+       END-STRING
+       WRITE P-REC
+
+       PERFORM VARYING I FROM 1 BY 1 UNTIL I > EXP-COUNT
+           MOVE "[[EXP]]" TO P-REC WRITE P-REC
+
+           MOVE SPACES TO P-REC
+           STRING "TITLE: " DELIMITED BY SIZE
+                  FUNCTION TRIM(EXP-TITLE(I)) DELIMITED BY SIZE
+             INTO P-REC
+           END-STRING
+           WRITE P-REC
+
+           MOVE SPACES TO P-REC
+           STRING "COMPANY: " DELIMITED BY SIZE
+                  FUNCTION TRIM(EXP-COMPANY(I)) DELIMITED BY SIZE
+             INTO P-REC
+           END-STRING
+           WRITE P-REC
+
+           MOVE SPACES TO P-REC
+           STRING "DATES: " DELIMITED BY SIZE
+                  FUNCTION TRIM(EXP-DATES(I)) DELIMITED BY SIZE
+             INTO P-REC
+           END-STRING
+           WRITE P-REC
+
+           MOVE "[DESC]" TO P-REC WRITE P-REC
+           MOVE "BEGIN"  TO P-REC WRITE P-REC
+           IF FUNCTION LENGTH(FUNCTION TRIM(EXP-DESC(I))) > 0
+               MOVE EXP-DESC(I) TO P-REC
+               WRITE P-REC
+           ELSE
+               MOVE SPACES TO P-REC
+               WRITE P-REC
+           END-IF
+           MOVE "END"    TO P-REC WRITE P-REC
+           MOVE "[/DESC]" TO P-REC WRITE P-REC
+
+           MOVE "[[/EXP]]" TO P-REC WRITE P-REC
+       END-PERFORM
+
+       MOVE "[/EXPERIENCES]" TO P-REC WRITE P-REC
+
+       MOVE "[EDUCATION]" TO P-REC WRITE P-REC
+       MOVE SPACES TO P-REC
+       STRING "COUNT: " DELIMITED BY SIZE
+              EDU-COUNT DELIMITED BY SIZE
+         INTO P-REC
+       END-STRING
+       WRITE P-REC
+
+       PERFORM VARYING I FROM 1 BY 1 UNTIL I > EDU-COUNT
+           MOVE "[[EDU]]" TO P-REC WRITE P-REC
+
+           MOVE SPACES TO P-REC
+           STRING "DEGREE: " DELIMITED BY SIZE
+                  FUNCTION TRIM(EDU-DEGREE(I)) DELIMITED BY SIZE
+             INTO P-REC
+           END-STRING
+           WRITE P-REC
+
+           MOVE SPACES TO P-REC
+           STRING "UNIVERSITY: " DELIMITED BY SIZE
+                  FUNCTION TRIM(EDU-UNIV(I)) DELIMITED BY SIZE
+             INTO P-REC
+           END-STRING
+           WRITE P-REC
+
+           MOVE SPACES TO P-REC
+           STRING "YEARS: " DELIMITED BY SIZE
+                  FUNCTION TRIM(EDU-YEARS(I)) DELIMITED BY SIZE
+             INTO P-REC
+           END-STRING
+           WRITE P-REC
+
+           MOVE "[[/EDU]]" TO P-REC WRITE P-REC
+       END-PERFORM
+
+       MOVE "[/EDUCATION]" TO P-REC WRITE P-REC
+       MOVE "[EOF]"        TO P-REC WRITE P-REC
+
+       CLOSE P-FILE
+       EXIT.
+
+VIEW-PROFILE.
+       PERFORM BUILD-PROFILE-PATH
+       OPEN INPUT P-FILE
+
+       IF P-STAT NOT = "00"
+           MOVE "No profile found. Create/Edit your profile first." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       PERFORM CLEAR-PROFILE-WS
+       PERFORM PARSE-PROFILE-FILE
+       CLOSE P-FILE
+       PERFORM PRINT-PROFILE-CLEAN
+       EXIT.
+
+
 PROGRAM-END.
     STOP RUN.
+
+CLEAR-INPUT.
+       MOVE SPACES TO W-USR-INPT W-TMP W-RAW W-CLEAN
+       MOVE 0 TO I J
+       EXIT.
+
+*> Reset profile WS before parsing/printing
+CLEAR-PROFILE-WS.
+       MOVE SPACES TO FIRST-NAME LAST-NAME UNIVERSITY MAJOR ABOUT-ME
+       MOVE 0 TO GRAD-YEAR EXP-COUNT EDU-COUNT CURR-EXP-IDX CURR-EDU-IDX
+       MOVE SPACES TO W-YEAR-TEXT-VIEW
+       PERFORM VARYING I FROM 1 BY 1 UNTIL I > 3
+           MOVE SPACES TO EXP-TITLE(I) EXP-COMPANY(I) EXP-DATES(I) EXP-DESC(I)
+           MOVE SPACES TO EDU-DEGREE(I) EDU-UNIV(I) EDU-YEARS(I)
+       END-PERFORM
+       MOVE 'N' TO MODE-FLAG IN-BLOCK
+       EXIT.
+
+*> Parse the structured profile text into fields
+PARSE-PROFILE-FILE.
+       PERFORM UNTIL 1 = 0
+           READ P-FILE INTO P-REC
+               AT END EXIT PERFORM
+               NOT AT END
+                   MOVE FUNCTION TRIM(P-REC) TO VIEW-LINE
+
+                   *> Section/state handling
+                   IF VIEW-LINE = "[ABOUT]"
+                       SET MODE-ABOUT TO TRUE
+                       MOVE 'N' TO IN-BLOCK
+                       CONTINUE
+                   END-IF
+                   IF VIEW-LINE = "[/ABOUT]"
+                       SET MODE-NONE TO TRUE
+                       MOVE 'N' TO IN-BLOCK
+                       CONTINUE
+                   END-IF
+
+                   IF VIEW-LINE = "[DESC]"
+                       SET MODE-EXP-DESC TO TRUE
+                       MOVE 'N' TO IN-BLOCK
+                       CONTINUE
+                   END-IF
+                   IF VIEW-LINE = "[/DESC]"
+                       SET MODE-NONE TO TRUE
+                       MOVE 'N' TO IN-BLOCK
+                       CONTINUE
+                   END-IF
+
+                   IF VIEW-LINE = "BEGIN"
+                       MOVE 'Y' TO IN-BLOCK
+                       CONTINUE
+                   END-IF
+                   IF VIEW-LINE = "END"
+                       MOVE 'N' TO IN-BLOCK
+                       CONTINUE
+                   END-IF
+
+                   *> Handle blocks (About or Experience Description)
+                   IF MODE-ABOUT AND IN-BEGIN
+                       IF FUNCTION LENGTH(FUNCTION TRIM(VIEW-LINE)) > 0
+                           MOVE FUNCTION TRIM(VIEW-LINE) TO VIEW-VAL
+                           IF FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) = 0
+                               MOVE VIEW-VAL TO ABOUT-ME
+                           ELSE
+                               STRING FUNCTION TRIM(ABOUT-ME) DELIMITED BY SIZE
+                                      ' '              DELIMITED BY SIZE
+                                      VIEW-VAL         DELIMITED BY SIZE
+                                 INTO ABOUT-ME
+                               END-STRING
+                           END-IF
+                       END-IF
+                       CONTINUE
+                   END-IF
+
+                   IF MODE-EXP-DESC AND IN-BEGIN AND CURR-EXP-IDX > 0
+                       IF FUNCTION LENGTH(FUNCTION TRIM(VIEW-LINE)) > 0
+                           MOVE FUNCTION TRIM(VIEW-LINE) TO VIEW-VAL
+                           IF FUNCTION LENGTH(FUNCTION TRIM(EXP-DESC(CURR-EXP-IDX))) = 0
+                               MOVE VIEW-VAL TO EXP-DESC(CURR-EXP-IDX)
+                           ELSE
+                               STRING FUNCTION TRIM(EXP-DESC(CURR-EXP-IDX)) DELIMITED BY SIZE
+                                      ' '                       DELIMITED BY SIZE
+                                      VIEW-VAL                  DELIMITED BY SIZE
+                                 INTO EXP-DESC(CURR-EXP-IDX)
+                               END-STRING
+                           END-IF
+                       END-IF
+                       CONTINUE
+                   END-IF
+
+                   *> Experience/Education entry starts
+                   IF VIEW-LINE = "[[EXP]]"
+                       IF EXP-COUNT < 3
+                           ADD 1 TO EXP-COUNT
+                           MOVE EXP-COUNT TO CURR-EXP-IDX
+                       END-IF
+                       CONTINUE
+                   END-IF
+                   IF VIEW-LINE = "[[/EXP]]"
+                       MOVE 0 TO CURR-EXP-IDX
+                       CONTINUE
+                   END-IF
+
+                   IF VIEW-LINE = "[[EDU]]"
+                       IF EDU-COUNT < 3
+                           ADD 1 TO EDU-COUNT
+                           MOVE EDU-COUNT TO CURR-EDU-IDX
+                       END-IF
+                       CONTINUE
+                   END-IF
+                   IF VIEW-LINE = "[[/EDU]]"
+                       MOVE 0 TO CURR-EDU-IDX
+                       CONTINUE
+                   END-IF
+
+                   *> Key:Value lines (FIRST-NAME, LAST-NAME, etc.)
+                   MOVE 0 TO I
+                   INSPECT VIEW-LINE TALLYING I FOR CHARACTERS BEFORE INITIAL ":"
+                   IF I > 0 AND I < 100
+                       *> Extract key and value after colon+space
+                       MOVE FUNCTION TRIM(VIEW-LINE(1:I)) TO VIEW-TEXT
+                       MOVE FUNCTION TRIM(VIEW-LINE(I + 2:)) TO VIEW-VAL
+
+                       EVALUATE VIEW-TEXT
+                           WHEN "FIRST-NAME"
+                               MOVE VIEW-VAL TO FIRST-NAME
+                           WHEN "LAST-NAME"
+                               MOVE VIEW-VAL TO LAST-NAME
+                           WHEN "UNIVERSITY"
+                               IF CURR-EDU-IDX > 0
+                                   MOVE VIEW-VAL TO EDU-UNIV(CURR-EDU-IDX)
+                               ELSE
+                                   MOVE VIEW-VAL TO UNIVERSITY
+                               END-IF
+                           WHEN "MAJOR"
+                               MOVE VIEW-VAL TO MAJOR
+                           WHEN "GRAD-YEAR"
+                               MOVE VIEW-VAL(1:4) TO W-YEAR-TEXT-VIEW
+                           WHEN "TITLE"
+                               IF CURR-EXP-IDX > 0
+                                   MOVE VIEW-VAL TO EXP-TITLE(CURR-EXP-IDX)
+                               END-IF
+                           WHEN "COMPANY"
+                               IF CURR-EXP-IDX > 0
+                                   MOVE VIEW-VAL TO EXP-COMPANY(CURR-EXP-IDX)
+                               END-IF
+                           WHEN "DATES"
+                               IF CURR-EXP-IDX > 0
+                                   MOVE VIEW-VAL TO EXP-DATES(CURR-EXP-IDX)
+                               END-IF
+                           WHEN "DEGREE"
+                               IF CURR-EDU-IDX > 0
+                                   MOVE VIEW-VAL TO EDU-DEGREE(CURR-EDU-IDX)
+                               END-IF
+                           WHEN "YEARS"
+                               IF CURR-EDU-IDX > 0
+                                   MOVE VIEW-VAL TO EDU-YEARS(CURR-EDU-IDX)
+                               END-IF
+                           WHEN OTHER
+                               CONTINUE
+                       END-EVALUATE
+                   END-IF
+           END-READ
+       END-PERFORM
+       EXIT.
+
+*> Print a clean, formatted profile
+PRINT-PROFILE-CLEAN.
+
+       *> Name line
+       MOVE SPACES TO W-MSG
+       STRING "Name: "                DELIMITED BY SIZE
+              FUNCTION TRIM(FIRST-NAME) DELIMITED BY SIZE
+              " "                    DELIMITED BY SIZE
+              FUNCTION TRIM(LAST-NAME)  DELIMITED BY SIZE
+         INTO W-MSG
+       END-STRING
+       PERFORM DISP-MSG
+
+       MOVE SPACES TO W-MSG
+       STRING "University: "           DELIMITED BY SIZE
+              FUNCTION TRIM(UNIVERSITY) DELIMITED BY SIZE
+         INTO W-MSG
+       END-STRING
+       PERFORM DISP-MSG
+
+       MOVE SPACES TO W-MSG
+       STRING "Major: "               DELIMITED BY SIZE
+              FUNCTION TRIM(MAJOR)     DELIMITED BY SIZE
+         INTO W-MSG
+       END-STRING
+        PERFORM DISP-MSG
+
+       MOVE SPACES TO W-MSG
+       STRING "Graduation Year: "     DELIMITED BY SIZE
+              FUNCTION TRIM(W-YEAR-TEXT-VIEW) DELIMITED BY SIZE
+         INTO W-MSG
+       END-STRING
+       PERFORM DISP-MSG
+
+       MOVE "About Me:" TO W-MSG PERFORM DISP-MSG
+       IF FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) = 0
+           MOVE "    (none)" TO W-MSG PERFORM DISP-MSG
+       ELSE
+           MOVE ABOUT-ME TO VIEW-TEXT
+           PERFORM DISPLAY-INDENTED-TEXT
+       END-IF
+
+       MOVE "Experiences:" TO W-MSG PERFORM DISP-MSG
+       IF EXP-COUNT = 0
+           MOVE "    (none)" TO W-MSG PERFORM DISP-MSG
+       ELSE
+           PERFORM VARYING VIEW-IDX FROM 1 BY 1 UNTIL VIEW-IDX > EXP-COUNT
+               MOVE SPACES TO W-MSG
+               STRING "  - Title: "           DELIMITED BY SIZE
+                      FUNCTION TRIM(EXP-TITLE(VIEW-IDX))   DELIMITED BY SIZE
+                 INTO W-MSG
+               END-STRING
+               PERFORM DISP-MSG
+
+               MOVE SPACES TO W-MSG
+               STRING "    Company: "         DELIMITED BY SIZE
+                      FUNCTION TRIM(EXP-COMPANY(VIEW-IDX)) DELIMITED BY SIZE
+                 INTO W-MSG
+               END-STRING
+               PERFORM DISP-MSG
+
+               MOVE SPACES TO W-MSG
+               STRING "    Dates: "           DELIMITED BY SIZE
+                      FUNCTION TRIM(EXP-DATES(VIEW-IDX))   DELIMITED BY SIZE
+                 INTO W-MSG
+               END-STRING
+               PERFORM DISP-MSG
+
+               MOVE "    Description:" TO W-MSG PERFORM DISP-MSG
+               IF FUNCTION LENGTH(FUNCTION TRIM(EXP-DESC(VIEW-IDX))) = 0
+                   MOVE "        (none)" TO W-MSG PERFORM DISP-MSG
+               ELSE
+                   MOVE EXP-DESC(VIEW-IDX) TO VIEW-TEXT
+                   PERFORM DISPLAY-INDENTED-TEXT
+               END-IF
+           END-PERFORM
+       END-IF
+
+       MOVE "Education:" TO W-MSG PERFORM DISP-MSG
+       IF EDU-COUNT = 0
+           MOVE "    (none)" TO W-MSG PERFORM DISP-MSG
+       ELSE
+           PERFORM VARYING VIEW-IDX FROM 1 BY 1 UNTIL VIEW-IDX > EDU-COUNT
+               MOVE SPACES TO W-MSG
+               STRING "  - Degree: "          DELIMITED BY SIZE
+                      FUNCTION TRIM(EDU-DEGREE(VIEW-IDX))  DELIMITED BY SIZE
+                 INTO W-MSG
+               END-STRING
+               PERFORM DISP-MSG
+
+               MOVE SPACES TO W-MSG
+               STRING "    University: "      DELIMITED BY SIZE
+                      FUNCTION TRIM(EDU-UNIV(VIEW-IDX))    DELIMITED BY SIZE
+                 INTO W-MSG
+               END-STRING
+               PERFORM DISP-MSG
+
+               MOVE SPACES TO W-MSG
+               STRING "    Years: "           DELIMITED BY SIZE
+                      FUNCTION TRIM(EDU-YEARS(VIEW-IDX))   DELIMITED BY SIZE
+                 INTO W-MSG
+               END-STRING
+               PERFORM DISP-MSG
+           END-PERFORM
+       END-IF
+       EXIT.
+
+*> Wrap and display long text with indentation
+DISPLAY-INDENTED-TEXT.
+       MOVE FUNCTION LENGTH(FUNCTION TRIM(VIEW-TEXT)) TO VIEW-LEN
+       IF VIEW-LEN = 0
+           EXIT PARAGRAPH
+       END-IF
+       MOVE 1 TO VIEW-POS
+       PERFORM UNTIL VIEW-POS > VIEW-LEN
+           *> 92 chars + 4 spaces indent = 96 total, fits in 100
+           MOVE 92 TO VIEW-CHUNK
+           IF VIEW-POS + VIEW-CHUNK - 1 > VIEW-LEN
+               COMPUTE VIEW-CHUNK = VIEW-LEN - VIEW-POS + 1
+           END-IF
+           MOVE SPACES TO W-MSG
+           STRING '    ' DELIMITED BY SIZE
+                  VIEW-TEXT(VIEW-POS:VIEW-CHUNK) DELIMITED BY SIZE
+             INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
+           ADD VIEW-CHUNK TO VIEW-POS
+       END-PERFORM
+       EXIT.
