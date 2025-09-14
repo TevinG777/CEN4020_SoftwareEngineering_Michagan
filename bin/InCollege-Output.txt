@@ -19,7 +19,7 @@ Major: Comptuer Science
 Graduation Year: 2026
 About Me:
     Senior at USF studying Computer Science. Interested in software development and Embedded Sys
-    tems. CO
+    tems.
 Experiences:
   - Title: Software Engineer
     Company: Seimens Energy

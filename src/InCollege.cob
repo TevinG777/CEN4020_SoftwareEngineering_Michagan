@@ -33,12 +33,12 @@ FD P-FILE.
 
 
 WORKING-STORAGE SECTION.
-01 W-MSG   PIC X(250).
-01 W-TMP   PIC X(250).
-01 W-RAW   PIC X(250).
-01 W-CLEAN PIC X(250).
-01 W-USR-INPT PIC X(250).
-01 W-USERNAME PIC X(250).
+01 W-MSG   PIC X(100).
+01 W-TMP   PIC X(100).
+01 W-RAW   PIC X(100).
+01 W-CLEAN PIC X(100).
+01 W-USR-INPT PIC X(100).
+01 W-USERNAME PIC X(100).
 01 W-PASSWORD PIC X(250).
 
 *> Validation variables for username
@@ -641,6 +641,7 @@ INIT-PROFILE-FOR-USER.
        END-IF
        EXIT.
 
+*> Function that will build the profile path for the user
 BUILD-PROFILE-PATH.
        MOVE FUNCTION LOWER-CASE(FUNCTION TRIM(W-USERNAME)) TO W-USER-LOW
        MOVE SPACES TO W-PROFILE-PATH
@@ -712,12 +713,12 @@ CREATE-EDIT-PROFILE.
        END-PERFORM
 
 
-       *> About Me (optional, multiline; finish with END)
+       *> About Me optional section
        MOVE "About Me (optional). Type lines; enter END on its own line to finish:" TO W-PROMPT
        PERFORM CAPTURE-MULTILINE-UNTIL-END
        MOVE W-OUTPUT-LONG TO ABOUT-ME
 
-       *> Experiences (0..3)
+       *> Experiences from 0 to 3
        MOVE 0 TO EXP-COUNT
        MOVE "Add up to 3 experiences. Type DONE to skip or stop." TO W-MSG PERFORM DISP-MSG
        PERFORM VARYING I FROM 1 BY 1 UNTIL I > 3
@@ -779,6 +780,7 @@ CREATE-EDIT-PROFILE.
        MOVE "Profile saved successfully." TO W-MSG PERFORM DISP-MSG
        EXIT.
 
+*> Function to prompt for a required filed save profile to a file
 SAVE-PROFILE-TO-FILE.
        PERFORM BUILD-PROFILE-PATH
        OPEN OUTPUT P-FILE
@@ -960,38 +962,64 @@ CLEAR-INPUT.
 
 *> Prompt for a required single-line field; returns trimmed value in W-OUTPUT
 PROMPT-REQUIRED-FIELD.
-       MOVE W-PROMPT TO W-MSG PERFORM DISP-MSG
-       PERFORM CLEAR-INPUT
-       PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
-           PERFORM READ-INPUT-RAW
-           IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
-               MOVE W-RETRY TO W-MSG PERFORM DISP-MSG
-           END-IF
-       END-PERFORM
-       MOVE FUNCTION TRIM(W-USR-INPT) TO W-OUTPUT
-       EXIT.
+    *> Display the initial prompt message
+    MOVE W-PROMPT TO W-MSG
+    PERFORM DISP-MSG
+
+    *> Clear any previous input
+    PERFORM CLEAR-INPUT
+
+    *> Loop until the user enters a non-blank value
+    PERFORM UNTIL FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 0
+        *> Read the user's input
+        PERFORM READ-INPUT-RAW
+
+        *> If the input is blank, display the retry message
+        IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) = 0
+         MOVE W-RETRY TO W-MSG
+         PERFORM DISP-MSG
+        END-IF
+    END-PERFORM
+
+    *> Store the trimmed input in W-OUTPUT
+    MOVE FUNCTION TRIM(W-USR-INPT) TO W-OUTPUT
+    EXIT.
 
 *> Capture optional multi-line text until a line with END; returns in W-OUTPUT-LONG
 CAPTURE-MULTILINE-UNTIL-END.
-       MOVE W-PROMPT TO W-MSG PERFORM DISP-MSG
-       PERFORM CLEAR-INPUT
-       MOVE SPACES TO W-OUTPUT-LONG
-       PERFORM UNTIL FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "END"
-           PERFORM READ-INPUT-RAW
-           IF FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) NOT = "END"
-               MOVE FUNCTION LENGTH(FUNCTION TRIM(W-OUTPUT-LONG)) TO LEN
-               IF LEN > 0
-                   STRING W-OUTPUT-LONG DELIMITED BY SIZE
-                          " "           DELIMITED BY SIZE
-                          W-USR-INPT    DELIMITED BY SIZE
-                      INTO W-OUTPUT-LONG
-                   END-STRING
-               ELSE
-                   MOVE W-USR-INPT TO W-OUTPUT-LONG
-               END-IF
-           END-IF
-       END-PERFORM
-       EXIT.
+    *> Display the initial prompt message
+    MOVE W-PROMPT TO W-MSG PERFORM DISP-MSG
+
+    *> Clear any previous input and initialize the output variable
+    PERFORM CLEAR-INPUT
+    MOVE SPACES TO W-OUTPUT-LONG
+
+    *> Loop until the user enters "END"
+    PERFORM UNTIL FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "END"
+        *> Read the next line of input
+        PERFORM READ-INPUT-RAW
+
+        *> Check if the input is not "END"
+        IF FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) NOT = "END"
+         *> Get the current length of the accumulated output
+         MOVE FUNCTION LENGTH(FUNCTION TRIM(W-OUTPUT-LONG)) TO LEN
+
+         *> If there is already content in the output, append the new input with a space
+         IF LEN > 0
+             STRING W-OUTPUT-LONG DELIMITED BY SIZE
+                 " "           DELIMITED BY SIZE
+                 W-USR-INPT    DELIMITED BY SIZE
+             INTO W-OUTPUT-LONG
+             END-STRING
+         ELSE
+             *> If the output is empty, directly move the input to the output
+             MOVE W-USR-INPT TO W-OUTPUT-LONG
+         END-IF
+        END-IF
+    END-PERFORM
+
+    *> Exit the paragraph
+    EXIT.
 
 *> Reset profile WS before parsing/printing
 CLEAR-PROFILE-WS.
@@ -1137,7 +1165,7 @@ PARSE-PROFILE-FILE.
        END-PERFORM
        EXIT.
 
-*> Print a clean, formatted profile
+*> Print a clean formatted profile to the console
 PRINT-PROFILE-CLEAN.
 
        *> Name line
