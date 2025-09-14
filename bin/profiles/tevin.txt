@@ -8,11 +8,31 @@ GRAD-YEAR: 2026
 [/PROFILE]
 [ABOUT]
 BEGIN
-
+Senior at USF studying Computer Science. Interested in software development and Embedded Systems. CO
 END
 [/ABOUT]
 [EXPERIENCES]
-COUNT: 0
+COUNT: 2
+[[EXP]]
+TITLE: Software Engineer
+COMPANY: Seimens Energy
+DATES: Jun 2023 - May 2025
+[DESC]
+BEGIN
+Worked as a Data Engineer
+END
+[/DESC]
+[[/EXP]]
+[[EXP]]
+TITLE: Software Engineer
+COMPANY: Aevex Aerospace
+DATES: May 2025 - Sept 2025
+[DESC]
+BEGIN
+Worked as a Software Engineer
+END
+[/DESC]
+[[/EXP]]
 [/EXPERIENCES]
 [EDUCATION]
 COUNT: 0

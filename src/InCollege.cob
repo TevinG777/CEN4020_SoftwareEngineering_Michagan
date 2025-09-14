@@ -33,13 +33,13 @@ FD P-FILE.
 
 
 WORKING-STORAGE SECTION.
-01 W-MSG   PIC X(100).
-01 W-TMP   PIC X(100).
-01 W-RAW   PIC X(100).
-01 W-CLEAN PIC X(100).
-01 W-USR-INPT PIC X(100).
-01 W-USERNAME PIC X(32).
-01 W-PASSWORD PIC X(12).
+01 W-MSG   PIC X(250).
+01 W-TMP   PIC X(250).
+01 W-RAW   PIC X(250).
+01 W-CLEAN PIC X(250).
+01 W-USR-INPT PIC X(250).
+01 W-USERNAME PIC X(250).
+01 W-PASSWORD PIC X(250).
 
 *> Validation variables for username
 01 USERNAME-LEN          PIC 9(4) COMP.
@@ -104,7 +104,7 @@ WORKING-STORAGE SECTION.
 01 GRAD-YEAR        PIC 9(4).
 01 W-YEAR-TEXT      PIC X(4).
 
-01 ABOUT-ME         PIC X(500).
+01 ABOUT-ME         PIC X(1000).
 
 01 EXP-COUNT        PIC 9     VALUE 0.
 01 EXPERIENCE OCCURS 3 TIMES.
@@ -139,9 +139,11 @@ WORKING-STORAGE SECTION.
 01 IN-BLOCK          PIC X VALUE 'N'.
    88 IN-BEGIN       VALUE 'Y'.
 01 W-YEAR-TEXT-VIEW  PIC X(4).
+01 W-ACC             PIC X(512).
+01 LINE-IS-TAG       PIC X VALUE 'N'.
 
 *> Generic prompt helpers
-01 W-PROMPT          PIC X(100).
+01 W-PROMPT          PIC X(250).
 01 W-RETRY           PIC X(100).
 01 W-OUTPUT          PIC X(300).
 01 W-OUTPUT-LONG     PIC X(500).
@@ -830,6 +832,7 @@ SAVE-PROFILE-TO-FILE.
        MOVE "[/PROFILE]" TO P-REC WRITE P-REC
 
        MOVE "[ABOUT]" TO P-REC WRITE P-REC
+       MOVE "BEGIN"   TO P-REC WRITE P-REC
        IF FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) > 0
            MOVE ABOUT-ME TO P-REC
            WRITE P-REC
@@ -1009,70 +1012,38 @@ PARSE-PROFILE-FILE.
                AT END EXIT PERFORM
                NOT AT END
                    MOVE FUNCTION TRIM(P-REC) TO VIEW-LINE
+                   MOVE 'N' TO LINE-IS-TAG
 
                    *> Section/state handling
                    IF VIEW-LINE = "[ABOUT]"
                        SET MODE-ABOUT TO TRUE
                        MOVE 'N' TO IN-BLOCK
-                       CONTINUE
+                       MOVE 'Y' TO LINE-IS-TAG
                    END-IF
                    IF VIEW-LINE = "[/ABOUT]"
                        SET MODE-NONE TO TRUE
                        MOVE 'N' TO IN-BLOCK
-                       CONTINUE
+                       MOVE 'Y' TO LINE-IS-TAG
                    END-IF
 
                    IF VIEW-LINE = "[DESC]"
                        SET MODE-EXP-DESC TO TRUE
                        MOVE 'N' TO IN-BLOCK
-                       CONTINUE
+                       MOVE 'Y' TO LINE-IS-TAG
                    END-IF
                    IF VIEW-LINE = "[/DESC]"
                        SET MODE-NONE TO TRUE
                        MOVE 'N' TO IN-BLOCK
-                       CONTINUE
+                       MOVE 'Y' TO LINE-IS-TAG
                    END-IF
 
                    IF VIEW-LINE = "BEGIN"
                        MOVE 'Y' TO IN-BLOCK
-                       CONTINUE
+                       MOVE 'Y' TO LINE-IS-TAG
                    END-IF
                    IF VIEW-LINE = "END"
                        MOVE 'N' TO IN-BLOCK
-                       CONTINUE
-                   END-IF
-
-                   *> Handle blocks (About or Experience Description)
-                   IF MODE-ABOUT AND IN-BEGIN
-                       IF FUNCTION LENGTH(FUNCTION TRIM(VIEW-LINE)) > 0
-                           MOVE FUNCTION TRIM(VIEW-LINE) TO VIEW-VAL
-                           IF FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) = 0
-                               MOVE VIEW-VAL TO ABOUT-ME
-                           ELSE
-                               STRING FUNCTION TRIM(ABOUT-ME) DELIMITED BY SIZE
-                                      ' '              DELIMITED BY SIZE
-                                      VIEW-VAL         DELIMITED BY SIZE
-                                 INTO ABOUT-ME
-                               END-STRING
-                           END-IF
-                       END-IF
-                       CONTINUE
-                   END-IF
-
-                   IF MODE-EXP-DESC AND IN-BEGIN AND CURR-EXP-IDX > 0
-                       IF FUNCTION LENGTH(FUNCTION TRIM(VIEW-LINE)) > 0
-                           MOVE FUNCTION TRIM(VIEW-LINE) TO VIEW-VAL
-                           IF FUNCTION LENGTH(FUNCTION TRIM(EXP-DESC(CURR-EXP-IDX))) = 0
-                               MOVE VIEW-VAL TO EXP-DESC(CURR-EXP-IDX)
-                           ELSE
-                               STRING FUNCTION TRIM(EXP-DESC(CURR-EXP-IDX)) DELIMITED BY SIZE
-                                      ' '                       DELIMITED BY SIZE
-                                      VIEW-VAL                  DELIMITED BY SIZE
-                                 INTO EXP-DESC(CURR-EXP-IDX)
-                               END-STRING
-                           END-IF
-                       END-IF
-                       CONTINUE
+                       MOVE 'Y' TO LINE-IS-TAG
                    END-IF
 
                    *> Experience/Education entry starts
@@ -1081,11 +1052,11 @@ PARSE-PROFILE-FILE.
                            ADD 1 TO EXP-COUNT
                            MOVE EXP-COUNT TO CURR-EXP-IDX
                        END-IF
-                       CONTINUE
+                       MOVE 'Y' TO LINE-IS-TAG
                    END-IF
                    IF VIEW-LINE = "[[/EXP]]"
                        MOVE 0 TO CURR-EXP-IDX
-                       CONTINUE
+                       MOVE 'Y' TO LINE-IS-TAG
                    END-IF
 
                    IF VIEW-LINE = "[[EDU]]"
@@ -1093,61 +1064,76 @@ PARSE-PROFILE-FILE.
                            ADD 1 TO EDU-COUNT
                            MOVE EDU-COUNT TO CURR-EDU-IDX
                        END-IF
-                       CONTINUE
+                       MOVE 'Y' TO LINE-IS-TAG
                    END-IF
                    IF VIEW-LINE = "[[/EDU]]"
                        MOVE 0 TO CURR-EDU-IDX
-                       CONTINUE
+                       MOVE 'Y' TO LINE-IS-TAG
                    END-IF
 
-                   *> Key:Value lines (FIRST-NAME, LAST-NAME, etc.)
-                   MOVE 0 TO I
-                   INSPECT VIEW-LINE TALLYING I FOR CHARACTERS BEFORE INITIAL ":"
-                   IF I > 0 AND I < 100
-                       *> Extract key and value after colon+space
-                       MOVE FUNCTION TRIM(VIEW-LINE(1:I)) TO VIEW-TEXT
-                       MOVE FUNCTION TRIM(VIEW-LINE(I + 2:)) TO VIEW-VAL
+                   *> Handle blocks (About or Experience Description) and key:value only when not a tag line
+                   IF LINE-IS-TAG NOT = 'Y'
+                       IF MODE-ABOUT AND IN-BEGIN
+                           MOVE ABOUT-ME TO W-ACC
+                           PERFORM APPEND-FROM-VIEW-LINE
+                           MOVE W-ACC TO ABOUT-ME
+                       END-IF
 
-                       EVALUATE VIEW-TEXT
-                           WHEN "FIRST-NAME"
-                               MOVE VIEW-VAL TO FIRST-NAME
-                           WHEN "LAST-NAME"
-                               MOVE VIEW-VAL TO LAST-NAME
-                           WHEN "UNIVERSITY"
-                               IF CURR-EDU-IDX > 0
-                                   MOVE VIEW-VAL TO EDU-UNIV(CURR-EDU-IDX)
-                               ELSE
-                                   MOVE VIEW-VAL TO UNIVERSITY
-                               END-IF
-                           WHEN "MAJOR"
-                               MOVE VIEW-VAL TO MAJOR
-                           WHEN "GRAD-YEAR"
-                               MOVE VIEW-VAL(1:4) TO W-YEAR-TEXT-VIEW
-                           WHEN "TITLE"
-                               IF CURR-EXP-IDX > 0
-                                   MOVE VIEW-VAL TO EXP-TITLE(CURR-EXP-IDX)
-                               END-IF
-                           WHEN "COMPANY"
-                               IF CURR-EXP-IDX > 0
-                                   MOVE VIEW-VAL TO EXP-COMPANY(CURR-EXP-IDX)
-                               END-IF
-                           WHEN "DATES"
-                               IF CURR-EXP-IDX > 0
-                                   MOVE VIEW-VAL TO EXP-DATES(CURR-EXP-IDX)
-                               END-IF
-                           WHEN "DEGREE"
-                               IF CURR-EDU-IDX > 0
-                                   MOVE VIEW-VAL TO EDU-DEGREE(CURR-EDU-IDX)
-                               END-IF
-                           WHEN "YEARS"
-                               IF CURR-EDU-IDX > 0
-                                   MOVE VIEW-VAL TO EDU-YEARS(CURR-EDU-IDX)
-                               END-IF
-                           WHEN OTHER
-                               CONTINUE
-                       END-EVALUATE
+                       IF MODE-EXP-DESC AND IN-BEGIN AND CURR-EXP-IDX > 0
+                           MOVE EXP-DESC(CURR-EXP-IDX) TO W-ACC
+                           PERFORM APPEND-FROM-VIEW-LINE
+                           MOVE W-ACC TO EXP-DESC(CURR-EXP-IDX)
+                       END-IF
+
+                       *> Key:Value lines (FIRST-NAME, LAST-NAME, etc.)
+                       MOVE 0 TO I
+                       INSPECT VIEW-LINE TALLYING I FOR CHARACTERS BEFORE INITIAL ":"
+                       IF I > 0 AND I < 100
+                           *> Extract key and value after colon+space
+                           MOVE FUNCTION TRIM(VIEW-LINE(1:I)) TO VIEW-TEXT
+                           MOVE FUNCTION TRIM(VIEW-LINE(I + 2:)) TO VIEW-VAL
+
+                           EVALUATE VIEW-TEXT
+                               WHEN "FIRST-NAME"
+                                   MOVE VIEW-VAL TO FIRST-NAME
+                               WHEN "LAST-NAME"
+                                   MOVE VIEW-VAL TO LAST-NAME
+                               WHEN "UNIVERSITY"
+                                   IF CURR-EDU-IDX > 0
+                                       MOVE VIEW-VAL TO EDU-UNIV(CURR-EDU-IDX)
+                                   ELSE
+                                       MOVE VIEW-VAL TO UNIVERSITY
+                                   END-IF
+                               WHEN "MAJOR"
+                                   MOVE VIEW-VAL TO MAJOR
+                               WHEN "GRAD-YEAR"
+                                   MOVE VIEW-VAL(1:4) TO W-YEAR-TEXT-VIEW
+                               WHEN "TITLE"
+                                   IF CURR-EXP-IDX > 0
+                                       MOVE VIEW-VAL TO EXP-TITLE(CURR-EXP-IDX)
+                                   END-IF
+                               WHEN "COMPANY"
+                                   IF CURR-EXP-IDX > 0
+                                       MOVE VIEW-VAL TO EXP-COMPANY(CURR-EXP-IDX)
+                                   END-IF
+                               WHEN "DATES"
+                                   IF CURR-EXP-IDX > 0
+                                       MOVE VIEW-VAL TO EXP-DATES(CURR-EXP-IDX)
+                                   END-IF
+                               WHEN "DEGREE"
+                                   IF CURR-EDU-IDX > 0
+                                       MOVE VIEW-VAL TO EDU-DEGREE(CURR-EDU-IDX)
+                                   END-IF
+                               WHEN "YEARS"
+                                   IF CURR-EDU-IDX > 0
+                                       MOVE VIEW-VAL TO EDU-YEARS(CURR-EDU-IDX)
+                                   END-IF
+                               WHEN OTHER
+                                   CONTINUE
+                           END-EVALUATE
+                       END-IF
                    END-IF
-           END-READ
+            END-READ
        END-PERFORM
        EXIT.
 
@@ -1279,4 +1265,20 @@ DISPLAY-INDENTED-TEXT.
            PERFORM DISP-MSG
            ADD VIEW-CHUNK TO VIEW-POS
        END-PERFORM
+       EXIT.
+
+*> Helper: append trimmed VIEW-LINE to accumulator W-ACC with a space
+APPEND-FROM-VIEW-LINE.
+       IF FUNCTION LENGTH(FUNCTION TRIM(VIEW-LINE)) > 0
+           MOVE FUNCTION TRIM(VIEW-LINE) TO VIEW-VAL
+           IF FUNCTION LENGTH(FUNCTION TRIM(W-ACC)) = 0
+               MOVE VIEW-VAL TO W-ACC
+           ELSE
+               STRING FUNCTION TRIM(W-ACC) DELIMITED BY SIZE
+                      ' '                DELIMITED BY SIZE
+                      VIEW-VAL           DELIMITED BY SIZE
+                 INTO W-ACC
+               END-STRING
+           END-IF
+       END-IF
        EXIT.

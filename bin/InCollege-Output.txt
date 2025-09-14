@@ -18,9 +18,19 @@ University: University of South Florida
 Major: Comptuer Science
 Graduation Year: 2026
 About Me:
-    BEGIN
+    Senior at USF studying Computer Science. Interested in software development and Embedded Sys
+    tems. CO
 Experiences:
-    (none)
+  - Title: Software Engineer
+    Company: Seimens Energy
+    Dates: Jun 2023 - May 2025
+    Description:
+    Worked as a Data Engineer
+  - Title: Software Engineer
+    Company: Aevex Aerospace
+    Dates: May 2025 - Sept 2025
+    Description:
+    Worked as a Software Engineer
 Education:
     (none)
 Please select an option:
