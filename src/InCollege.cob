@@ -104,7 +104,7 @@ WORKING-STORAGE SECTION.
 01 GRAD-YEAR        PIC 9(4).
 01 W-YEAR-TEXT      PIC X(4).
 
-01 ABOUT-ME         PIC X(1000).
+01 ABOUT-ME         PIC X(3000).
 
 01 EXP-COUNT        PIC 9     VALUE 0.
 01 EXPERIENCE OCCURS 3 TIMES.
@@ -123,7 +123,7 @@ WORKING-STORAGE SECTION.
 01 LEN              PIC 9(4) COMP.
 
 *> Additional storage for clean profile viewing
-01 VIEW-TEXT         PIC X(512).
+01 VIEW-TEXT         PIC X(3000).
 01 VIEW-VAL          PIC X(512).
 01 VIEW-LINE         PIC X(512).
 01 VIEW-POS          PIC 9(4) COMP VALUE 1.
@@ -139,14 +139,14 @@ WORKING-STORAGE SECTION.
 01 IN-BLOCK          PIC X VALUE 'N'.
    88 IN-BEGIN       VALUE 'Y'.
 01 W-YEAR-TEXT-VIEW  PIC X(4).
-01 W-ACC             PIC X(512).
+01 W-ACC             PIC X(3000).
 01 LINE-IS-TAG       PIC X VALUE 'N'.
 
 *> Generic prompt helpers
 01 W-PROMPT          PIC X(250).
 01 W-RETRY           PIC X(100).
 01 W-OUTPUT          PIC X(300).
-01 W-OUTPUT-LONG     PIC X(500).
+01 W-OUTPUT-LONG     PIC X(3000).
 
 
 
@@ -835,9 +835,19 @@ SAVE-PROFILE-TO-FILE.
 
        MOVE "[ABOUT]" TO P-REC WRITE P-REC
        MOVE "BEGIN"   TO P-REC WRITE P-REC
-       IF FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) > 0
-           MOVE ABOUT-ME TO P-REC
-           WRITE P-REC
+       MOVE FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) TO LEN
+       IF LEN > 0
+           MOVE 1 TO VIEW-POS
+           PERFORM UNTIL VIEW-POS > LEN
+               COMPUTE VIEW-CHUNK = LEN - VIEW-POS + 1
+               IF VIEW-CHUNK > 500
+                   MOVE 500 TO VIEW-CHUNK
+               END-IF
+               MOVE SPACES TO P-REC
+               MOVE ABOUT-ME(VIEW-POS:VIEW-CHUNK) TO P-REC
+               WRITE P-REC
+               ADD VIEW-CHUNK TO VIEW-POS
+           END-PERFORM
        ELSE
            MOVE SPACES TO P-REC
            WRITE P-REC
@@ -935,6 +945,7 @@ SAVE-PROFILE-TO-FILE.
        CLOSE P-FILE
        EXIT.
 
+*> funtion to view the profile of the user
 VIEW-PROFILE.
        PERFORM BUILD-PROFILE-PATH
        OPEN INPUT P-FILE

@@ -8,7 +8,7 @@ GRAD-YEAR: 2026
 [/PROFILE]
 [ABOUT]
 BEGIN
-Senior at USF studying Computer Science. Interested in software development and Embedded Systems.
+Senior at USF studying Computer Science. Interested in software development and Embedded Systems. CO
 END
 [/ABOUT]
 [EXPERIENCES]

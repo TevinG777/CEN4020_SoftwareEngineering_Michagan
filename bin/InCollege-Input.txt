@@ -1,4 +1,25 @@
 login
 Tevin
 this1saV@lid
-4
+5
+Tevin
+Gajadhar
+University of South Florida
+Comptuer Science
+2026
+Senior at USF studying Computer Science. Interested in software development and Embedded Systems.
+END
+YES
+Software Engineer
+Seimens Energy
+Jun 2023 - May 2025
+Worked as a Data Engineer
+END
+YES
+Software Engineer
+Aevex Aerospace
+May 2025 - Sept 2025
+Worked as a Software Engineer
+END
+DONE
+DONE
