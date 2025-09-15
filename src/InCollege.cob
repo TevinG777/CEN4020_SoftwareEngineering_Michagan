@@ -149,8 +149,6 @@ WORKING-STORAGE SECTION.
 01 W-OUTPUT-LONG     PIC X(3000).
 
 
-
-
 PROCEDURE DIVISION.
 MAIN-SECTION.
        OPEN INPUT I-FILE
@@ -627,7 +625,7 @@ INIT-PROFILE-FOR-USER.
        MOVE SPACES TO W-PROFILE-PATH
        STRING
            "bin/profiles/"                 DELIMITED BY SIZE
-           W-USER-LOW                      DELIMITED BY SPACE
+           FUNCTION TRIM(W-USER-LOW)       DELIMITED BY SPACE
            ".txt"                          DELIMITED BY SIZE
          INTO W-PROFILE-PATH
        END-STRING
@@ -641,7 +639,6 @@ INIT-PROFILE-FOR-USER.
        END-IF
        EXIT.
 
-*> Function that will build the profile path for the user
 BUILD-PROFILE-PATH.
        MOVE FUNCTION LOWER-CASE(FUNCTION TRIM(W-USERNAME)) TO W-USER-LOW
        MOVE SPACES TO W-PROFILE-PATH
@@ -671,14 +668,15 @@ SAVE-EMPTY-PROFILE.
        EXIT.
 
 CREATE-EDIT-PROFILE.
-       MOVE " --- Create/Edit Profile --- " TO W-MSG PERFORM DISP-MSG
+       PERFORM PRINT-LINE
+       MOVE "===== CREATE/EDIT PROFILE =====" TO W-MSG PERFORM DISP-MSG
+       PERFORM PRINT-LINE
 
        *> Required fields (non-blank)
        MOVE "Please enter First Name:"          TO W-PROMPT
        MOVE "First Name is required. Re-enter:" TO W-RETRY
        PERFORM PROMPT-REQUIRED-FIELD
        MOVE W-OUTPUT TO FIRST-NAME
-
 
        MOVE "Please enter Last Name:"          TO W-PROMPT
        MOVE "Last Name is required. Re-enter:" TO W-RETRY
@@ -713,12 +711,12 @@ CREATE-EDIT-PROFILE.
        END-PERFORM
 
 
-       *> About Me optional section
-       MOVE "About Me (optional). Type lines; enter END on its own line to finish:" TO W-PROMPT
-       PERFORM CAPTURE-MULTILINE-UNTIL-END
+       *> About Me (optional, finish with END)
+       MOVE "About Me (optional). Must be 90 charaters or less:" TO W-PROMPT
+       PERFORM CAPTURE-SINGLE-LINE
        MOVE W-OUTPUT-LONG TO ABOUT-ME
 
-       *> Experiences from 0 to 3
+       *> Experiences (0..3)
        MOVE 0 TO EXP-COUNT
        MOVE "Add up to 3 experiences. Type DONE to skip or stop." TO W-MSG PERFORM DISP-MSG
        PERFORM VARYING I FROM 1 BY 1 UNTIL I > 3
@@ -745,7 +743,7 @@ CREATE-EDIT-PROFILE.
            MOVE W-OUTPUT TO EXP-DATES(EXP-COUNT)
 
            MOVE "Short description (optional). Type END to finish description:" TO W-PROMPT
-           PERFORM CAPTURE-MULTILINE-UNTIL-END
+           PERFORM CAPTURE-SINGLE-LINE
            MOVE W-OUTPUT-LONG TO EXP-DESC(EXP-COUNT)
        END-PERFORM
 
@@ -776,8 +774,14 @@ CREATE-EDIT-PROFILE.
            MOVE W-OUTPUT TO EDU-YEARS(EDU-COUNT)
        END-PERFORM
 
+       PERFORM PRINT-LINE
+       MOVE "===== END CREATE/EDIT PROFILE =====" TO W-MSG PERFORM DISP-MSG
+       PERFORM PRINT-LINE
+
        PERFORM SAVE-PROFILE-TO-FILE
+       
        MOVE "Profile saved successfully." TO W-MSG PERFORM DISP-MSG
+       PERFORM PRINT-LINE
        EXIT.
 
 *> Function to prompt for a required filed save profile to a file
@@ -830,29 +834,15 @@ SAVE-PROFILE-TO-FILE.
        END-STRING
        WRITE P-REC
 
-
-       MOVE "[/PROFILE]" TO P-REC WRITE P-REC
-
        MOVE "[ABOUT]" TO P-REC WRITE P-REC
-       MOVE "BEGIN"   TO P-REC WRITE P-REC
-       MOVE FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) TO LEN
-       IF LEN > 0
-           MOVE 1 TO VIEW-POS
-           PERFORM UNTIL VIEW-POS > LEN
-               COMPUTE VIEW-CHUNK = LEN - VIEW-POS + 1
-               IF VIEW-CHUNK > 500
-                   MOVE 500 TO VIEW-CHUNK
-               END-IF
-               MOVE SPACES TO P-REC
-               MOVE ABOUT-ME(VIEW-POS:VIEW-CHUNK) TO P-REC
-               WRITE P-REC
-               ADD VIEW-CHUNK TO VIEW-POS
-           END-PERFORM
+       MOVE "BEGIN" TO P-REC WRITE P-REC
+       IF FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) > 0
+           MOVE ABOUT-ME TO P-REC
        ELSE
            MOVE SPACES TO P-REC
-           WRITE P-REC
        END-IF
-       MOVE "END"     TO P-REC WRITE P-REC
+       WRITE P-REC
+       MOVE "END" TO P-REC WRITE P-REC
        MOVE "[/ABOUT]" TO P-REC WRITE P-REC
 
        MOVE "[EXPERIENCES]" TO P-REC WRITE P-REC
@@ -996,38 +986,23 @@ PROMPT-REQUIRED-FIELD.
     MOVE FUNCTION TRIM(W-USR-INPT) TO W-OUTPUT
     EXIT.
 
-*> Capture optional multi-line text until a line with END; returns in W-OUTPUT-LONG
-CAPTURE-MULTILINE-UNTIL-END.
-    *> Display the initial prompt message
-    MOVE W-PROMPT TO W-MSG PERFORM DISP-MSG
+*> Capture optional single line
+CAPTURE-SINGLE-LINE.
+    *> Display the prompt message
+    MOVE W-PROMPT TO W-MSG
+    PERFORM DISP-MSG
 
-    *> Clear any previous input and initialize the output variable
-    PERFORM CLEAR-INPUT
+    *> Clear previous input
+    MOVE SPACES TO W-USR-INPT
     MOVE SPACES TO W-OUTPUT-LONG
 
-    *> Loop until the user enters "END"
-    PERFORM UNTIL FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "END"
-        *> Read the next line of input
-        PERFORM READ-INPUT-RAW
+    *> Read just one line of input
+    PERFORM READ-INPUT-RAW
 
-        *> Check if the input is not "END"
-        IF FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) NOT = "END"
-         *> Get the current length of the accumulated output
-         MOVE FUNCTION LENGTH(FUNCTION TRIM(W-OUTPUT-LONG)) TO LEN
+    *> Store the input in the output variable
+    MOVE W-USR-INPT TO W-OUTPUT-LONG
 
-         *> If there is already content in the output, append the new input with a space
-         IF LEN > 0
-             STRING W-OUTPUT-LONG DELIMITED BY SIZE
-                 " "           DELIMITED BY SIZE
-                 W-USR-INPT    DELIMITED BY SIZE
-             INTO W-OUTPUT-LONG
-             END-STRING
-         ELSE
-             *> If the output is empty, directly move the input to the output
-             MOVE W-USR-INPT TO W-OUTPUT-LONG
-         END-IF
-        END-IF
-    END-PERFORM
+    EXIT.
 
     *> Exit the paragraph
     EXIT.
@@ -1176,10 +1151,18 @@ PARSE-PROFILE-FILE.
        END-PERFORM
        EXIT.
 
-*> Print a clean formatted profile to the console
+*> Print a clean, formatted profile
 PRINT-PROFILE-CLEAN.
-
-       *> Name line
+       *> Print header
+       PERFORM PRINT-LINE
+       STRING "===== USER PROFILE =====" DELIMITED BY SIZE
+          INTO W-MSG
+       END-STRING
+       PERFORM DISP-MSG
+       PERFORM PRINT-LINE   
+       EXIT.
+       
+       *> Print name
        MOVE SPACES TO W-MSG
        STRING "Name: "                DELIMITED BY SIZE
               FUNCTION TRIM(FIRST-NAME) DELIMITED BY SIZE
@@ -1189,6 +1172,7 @@ PRINT-PROFILE-CLEAN.
        END-STRING
        PERFORM DISP-MSG
 
+       *> Print university
        MOVE SPACES TO W-MSG
        STRING "University: "           DELIMITED BY SIZE
               FUNCTION TRIM(UNIVERSITY) DELIMITED BY SIZE
@@ -1196,6 +1180,7 @@ PRINT-PROFILE-CLEAN.
        END-STRING
        PERFORM DISP-MSG
 
+       *> Print major
        MOVE SPACES TO W-MSG
        STRING "Major: "               DELIMITED BY SIZE
               FUNCTION TRIM(MAJOR)     DELIMITED BY SIZE
@@ -1203,6 +1188,7 @@ PRINT-PROFILE-CLEAN.
        END-STRING
         PERFORM DISP-MSG
 
+       *> Print graduation year
        MOVE SPACES TO W-MSG
        STRING "Graduation Year: "     DELIMITED BY SIZE
               FUNCTION TRIM(W-YEAR-TEXT-VIEW) DELIMITED BY SIZE
@@ -1210,26 +1196,38 @@ PRINT-PROFILE-CLEAN.
        END-STRING
        PERFORM DISP-MSG
 
-       MOVE "About Me:" TO W-MSG PERFORM DISP-MSG
+       *> Print "about me"
+       PERFORM PRINT-LINE
        IF FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) = 0
-           MOVE "    (none)" TO W-MSG PERFORM DISP-MSG
+           MOVE "About Me: (none)" TO W-MSG 
+           PERFORM DISP-MSG
        ELSE
-           MOVE ABOUT-ME TO VIEW-TEXT
-           PERFORM DISPLAY-INDENTED-TEXT
+           STRING "About Me: " DELIMITED BY SIZE
+           FUNCTION TRIM(ABOUT-ME) DELIMITED BY SIZE
+           INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
        END-IF
 
+       *> Print "experiences"
+       PERFORM PRINT-LINE
        MOVE "Experiences:" TO W-MSG PERFORM DISP-MSG
        IF EXP-COUNT = 0
+           PERFORM PRINT-LINE
            MOVE "    (none)" TO W-MSG PERFORM DISP-MSG
        ELSE
            PERFORM VARYING VIEW-IDX FROM 1 BY 1 UNTIL VIEW-IDX > EXP-COUNT
+               PERFORM PRINT-LINE
+
+               *> Print title
                MOVE SPACES TO W-MSG
-               STRING "  - Title: "           DELIMITED BY SIZE
+               STRING "    Title: "           DELIMITED BY SIZE
                       FUNCTION TRIM(EXP-TITLE(VIEW-IDX))   DELIMITED BY SIZE
                  INTO W-MSG
                END-STRING
                PERFORM DISP-MSG
 
+               *> Print company
                MOVE SPACES TO W-MSG
                STRING "    Company: "         DELIMITED BY SIZE
                       FUNCTION TRIM(EXP-COMPANY(VIEW-IDX)) DELIMITED BY SIZE
@@ -1237,6 +1235,7 @@ PRINT-PROFILE-CLEAN.
                END-STRING
                PERFORM DISP-MSG
 
+               *> Print dates
                MOVE SPACES TO W-MSG
                STRING "    Dates: "           DELIMITED BY SIZE
                       FUNCTION TRIM(EXP-DATES(VIEW-IDX))   DELIMITED BY SIZE
@@ -1244,28 +1243,39 @@ PRINT-PROFILE-CLEAN.
                END-STRING
                PERFORM DISP-MSG
 
-               MOVE "    Description:" TO W-MSG PERFORM DISP-MSG
+               *> Print description
                IF FUNCTION LENGTH(FUNCTION TRIM(EXP-DESC(VIEW-IDX))) = 0
-                   MOVE "        (none)" TO W-MSG PERFORM DISP-MSG
+                   MOVE "    Description: (none)" TO W-MSG 
+                   PERFORM DISP-MSG
                ELSE
-                   MOVE EXP-DESC(VIEW-IDX) TO VIEW-TEXT
-                   PERFORM DISPLAY-INDENTED-TEXT
+                   STRING "    Description: " DELIMITED BY SIZE
+                   FUNCTION TRIM(EXP-DESC(VIEW-IDX)) DELIMITED BY SIZE
+                       INTO W-MSG
+                   END-STRING
+                   PERFORM DISP-MSG
                END-IF
            END-PERFORM
        END-IF
 
+       *> Print education
+       PERFORM PRINT-LINE
        MOVE "Education:" TO W-MSG PERFORM DISP-MSG
        IF EDU-COUNT = 0
+           PERFORM PRINT-LINE
            MOVE "    (none)" TO W-MSG PERFORM DISP-MSG
        ELSE
            PERFORM VARYING VIEW-IDX FROM 1 BY 1 UNTIL VIEW-IDX > EDU-COUNT
+               PERFORM PRINT-LINE
+               
+               *> Print degree
                MOVE SPACES TO W-MSG
-               STRING "  - Degree: "          DELIMITED BY SIZE
+               STRING "    Degree: "          DELIMITED BY SIZE
                       FUNCTION TRIM(EDU-DEGREE(VIEW-IDX))  DELIMITED BY SIZE
                  INTO W-MSG
                END-STRING
                PERFORM DISP-MSG
 
+               *> Print university
                MOVE SPACES TO W-MSG
                STRING "    University: "      DELIMITED BY SIZE
                       FUNCTION TRIM(EDU-UNIV(VIEW-IDX))    DELIMITED BY SIZE
@@ -1273,6 +1283,7 @@ PRINT-PROFILE-CLEAN.
                END-STRING
                PERFORM DISP-MSG
 
+               *> Print years
                MOVE SPACES TO W-MSG
                STRING "    Years: "           DELIMITED BY SIZE
                       FUNCTION TRIM(EDU-YEARS(VIEW-IDX))   DELIMITED BY SIZE
@@ -1281,29 +1292,21 @@ PRINT-PROFILE-CLEAN.
                PERFORM DISP-MSG
            END-PERFORM
        END-IF
+
+       *> Print footer
+       MOVE SPACES TO W-MSG
+       PERFORM DISP-MSG
+       STRING "===== END USER PROFILE =====" DELIMITED BY SIZE
+          INTO W-MSG
+       END-STRING
+       PERFORM DISP-MSG
+       MOVE SPACES TO W-MSG
+       PERFORM DISP-MSG   *> blank line for spacing
        EXIT.
 
-*> Wrap and display long text with indentation
-DISPLAY-INDENTED-TEXT.
-       MOVE FUNCTION LENGTH(FUNCTION TRIM(VIEW-TEXT)) TO VIEW-LEN
-       IF VIEW-LEN = 0
-           EXIT PARAGRAPH
-       END-IF
-       MOVE 1 TO VIEW-POS
-       PERFORM UNTIL VIEW-POS > VIEW-LEN
-           *> 92 chars + 4 spaces indent = 96 total, fits in 100
-           MOVE 92 TO VIEW-CHUNK
-           IF VIEW-POS + VIEW-CHUNK - 1 > VIEW-LEN
-               COMPUTE VIEW-CHUNK = VIEW-LEN - VIEW-POS + 1
-           END-IF
-           MOVE SPACES TO W-MSG
-           STRING '    ' DELIMITED BY SIZE
-                  VIEW-TEXT(VIEW-POS:VIEW-CHUNK) DELIMITED BY SIZE
-             INTO W-MSG
-           END-STRING
-           PERFORM DISP-MSG
-           ADD VIEW-CHUNK TO VIEW-POS
-       END-PERFORM
+PRINT-LINE.
+       MOVE SPACES TO W-MSG
+       PERFORM DISP-MSG
        EXIT.
 
 *> Helper: append trimmed VIEW-LINE to accumulator W-ACC with a space
@@ -1321,3 +1324,4 @@ APPEND-FROM-VIEW-LINE.
            END-IF
        END-IF
        EXIT.
+     
