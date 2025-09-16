@@ -5,14 +5,13 @@ LAST-NAME: Gajadhar
 UNIVERSITY: University of South Florida
 MAJOR: Comptuer Science
 GRAD-YEAR: 2026
-[/PROFILE]
 [ABOUT]
 BEGIN
 Senior at USF studying Computer Science. Interested in software development and Embedded Systems.
 END
 [/ABOUT]
 [EXPERIENCES]
-COUNT: 2
+COUNT: 4
 [[EXP]]
 TITLE: Software Engineer
 COMPANY: Seimens Energy
@@ -30,6 +29,26 @@ DATES: May 2025 - Sept 2025
 [DESC]
 BEGIN
 Worked as a Software Engineer
+END
+[/DESC]
+[[/EXP]]
+[[EXP]]
+TITLE: Software Engineer
+COMPANY: Seimens Energy
+DATES: Jun 2023 - May 2025
+[DESC]
+BEGIN
+Worked as a Data Engineer
+END
+[/DESC]
+[[/EXP]]
+[[EXP]]
+TITLE: Soft0are Engineer
+COMPANY: Seimens Energy
+DATES: Jun 2023 - May 2025
+[DESC]
+BEGIN
+Worked as a Data Engineer                                                                                                                                                                                                                                                   2026
 END
 [/DESC]
 [[/EXP]]
