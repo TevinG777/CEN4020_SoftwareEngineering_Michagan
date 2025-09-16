@@ -11,7 +11,7 @@ Senior at USF studying Computer Science. Interested in software development and 
 END
 [/ABOUT]
 [EXPERIENCES]
-COUNT: 4
+COUNT: 2
 [[EXP]]
 TITLE: Software Engineer
 COMPANY: Seimens Energy
@@ -29,26 +29,6 @@ DATES: May 2025 - Sept 2025
 [DESC]
 BEGIN
 Worked as a Software Engineer
-END
-[/DESC]
-[[/EXP]]
-[[EXP]]
-TITLE: Software Engineer
-COMPANY: Seimens Energy
-DATES: Jun 2023 - May 2025
-[DESC]
-BEGIN
-Worked as a Data Engineer
-END
-[/DESC]
-[[/EXP]]
-[[EXP]]
-TITLE: Soft0are Engineer
-COMPANY: Seimens Energy
-DATES: Jun 2023 - May 2025
-[DESC]
-BEGIN
-Worked as a Data Engineer                                                                                                                                                                                                                                                   2026
 END
 [/DESC]
 [[/EXP]]
