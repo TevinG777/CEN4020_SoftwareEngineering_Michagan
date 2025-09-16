@@ -1,0 +1,46 @@
+Welcome to InCollege!
+Log In
+Create New Account
+Enter your choice:
+Please enter a username (No Space/Special Characters):
+Please enter a password (8-12 chars, 1 uppercase, 1 digit, 1 special, no spaces):
+Account created successfully!
+Welcome, testuser!
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
+ --- Create/Edit Profile ---
+Please enter First Name:
+Please enter Last Name:
+Please enter University/College Attended:
+Please enter Major:
+Enter Graduation Year (YYYY):
+About Me (optional). Type lines; enter END on its own line to finish:
+Add up to 3 experiences. Type DONE to skip or stop.
+Add an experience? Enter YES or DONE:
+Add up to 3 education entries. Type DONE to skip or stop.
+Add an education entry? Enter YES or DONE:
+Profile saved successfully.
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
+Returning to main menu...
+Invalid selection. Please try again.
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
