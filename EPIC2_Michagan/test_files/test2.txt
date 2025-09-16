@@ -1,8 +1,0 @@
-Create New Account
-testuser
-this1saV@lid
-4
-END
-DONE
-DONE
-6
