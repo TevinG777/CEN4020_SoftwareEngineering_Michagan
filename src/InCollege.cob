@@ -720,13 +720,24 @@ CREATE-EDIT-PROFILE.
 
        *> Experiences from 0 to 3
        MOVE 0 TO EXP-COUNT
-       MOVE "Add up to 3 experiences. Type DONE to skip or stop." TO W-MSG PERFORM DISP-MSG
+       MOVE "Add up to 3 experiences. Type YES to add, or DONE to skip/stop." 
+            TO W-MSG PERFORM DISP-MSG
+
        PERFORM VARYING I FROM 1 BY 1 UNTIL I > 3
-           MOVE "Add an experience? Enter YES or DONE:" TO W-MSG PERFORM DISP-MSG
-           PERFORM READ-INPUT
+           PERFORM UNTIL W-USR-INPT = "yes" OR W-USR-INPT = "done"
+               MOVE "Add an experience? Enter YES or DONE:" 
+                    TO W-MSG PERFORM DISP-MSG
+               PERFORM READ-INPUT   *> this already lowercases & trims
+               IF W-USR-INPT NOT = "yes" AND W-USR-INPT NOT = "done"
+                   MOVE "Invalid input. Please type YES or DONE." 
+                        TO W-MSG PERFORM DISP-MSG
+               END-IF
+           END-PERFORM
+
            IF W-USR-INPT = "done"
                EXIT PERFORM
            END-IF
+
            ADD 1 TO EXP-COUNT
 
            MOVE "Title (required):"         TO W-PROMPT
@@ -740,7 +751,7 @@ CREATE-EDIT-PROFILE.
            MOVE W-OUTPUT TO EXP-COMPANY(EXP-COUNT)
 
            MOVE "Dates ('Summer 2024' or 'Jan 2023 - May 2024') (required):" TO W-PROMPT
-           MOVE "Dates required. Re-enter:"                                         TO W-RETRY
+           MOVE "Dates required. Re-enter:" TO W-RETRY
            PERFORM PROMPT-REQUIRED-FIELD
            MOVE W-OUTPUT TO EXP-DATES(EXP-COUNT)
 
@@ -751,13 +762,24 @@ CREATE-EDIT-PROFILE.
 
        *> Education
        MOVE 0 TO EDU-COUNT
-       MOVE "Add up to 3 education entries. Type DONE to skip or stop." TO W-MSG PERFORM DISP-MSG
+       MOVE "Add up to 3 education entries. Type YES to add, or DONE to skip/stop."
+            TO W-MSG PERFORM DISP-MSG
+
        PERFORM VARYING I FROM 1 BY 1 UNTIL I > 3
-           MOVE "Add an education entry? Enter YES or DONE:" TO W-MSG PERFORM DISP-MSG
-           PERFORM READ-INPUT
+           PERFORM UNTIL W-USR-INPT = "yes" OR W-USR-INPT = "done"
+               MOVE "Add an education entry? Enter YES or DONE:" 
+                    TO W-MSG PERFORM DISP-MSG
+               PERFORM READ-INPUT   *> lowercased & trimmed
+               IF W-USR-INPT NOT = "yes" AND W-USR-INPT NOT = "done"
+                   MOVE "Invalid input. Please type YES or DONE." 
+                        TO W-MSG PERFORM DISP-MSG
+               END-IF
+           END-PERFORM
+
            IF W-USR-INPT = "done"
                EXIT PERFORM
            END-IF
+
            ADD 1 TO EDU-COUNT
 
            MOVE "Degree (required):"         TO W-PROMPT

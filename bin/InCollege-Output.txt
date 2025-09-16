@@ -13,26 +13,28 @@ Please select an option:
 5. Create/Edit Profile
 6. Return to main menu
 Enter choice (1-6):
-Name: Tevin Gajadhar
-University: University of South Florida
-Major: Comptuer Science
-Graduation Year: 2026
-About Me:
-    Senior at USF studying Computer Science. Interested in software development and Embedded Sys
-    tems. CO
-Experiences:
-  - Title: Software Engineer
-    Company: Seimens Energy
-    Dates: Jun 2023 - May 2025
-    Description:
-    Worked as a Data Engineer
-  - Title: Software Engineer
-    Company: Aevex Aerospace
-    Dates: May 2025 - Sept 2025
-    Description:
-    Worked as a Software Engineer
-Education:
-    (none)
+ --- Create/Edit Profile ---
+Please enter First Name:
+Please enter Last Name:
+Please enter University/College Attended:
+Please enter Major:
+Enter Graduation Year (YYYY):
+About Me (optional). Type lines; enter END on its own line to finish:
+Add up to 3 experiences. Type DONE to skip or stop.
+Add an experience? Enter YES or DONE:
+Title (required):
+Company/Organization (required):
+Dates ('Summer 2024' or 'Jan 2023 - May 2024') (required):
+Short description (optional). Type END to finish description:
+Add an experience? Enter YES or DONE:
+Title (required):
+Company/Organization (required):
+Dates ('Summer 2024' or 'Jan 2023 - May 2024') (required):
+Short description (optional). Type END to finish description:
+Add an experience? Enter YES or DONE:
+Add up to 3 education entries. Type DONE to skip or stop.
+Add an education entry? Enter YES or DONE:
+Profile saved successfully.
 Please select an option:
 1. Search for a job
 2. Find someone you know
