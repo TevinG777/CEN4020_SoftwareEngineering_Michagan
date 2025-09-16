@@ -1,0 +1,17 @@
+login
+testuser
+this1saV@lid
+5
+John
+Doe
+USF
+CS
+20X6
+1899
+2026
+Passionate about systems.
+END
+DONE
+DONE
+6
+
