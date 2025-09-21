@@ -15,6 +15,8 @@ FILE-CONTROL.
        SELECT P-FILE ASSIGN TO DYNAMIC W-PROFILE-PATH
            ORGANIZATION IS LINE SEQUENTIAL
            FILE STATUS IS P-STAT.
+       SELECT P-FILE-CUR ASSIGN TO W-PROFILE-PATH-CUR
+           ORGANIZATION IS LINE SEQUENTIAL.
 
 
 DATA DIVISION.
@@ -30,6 +32,11 @@ FD U-FILE.
 
 FD P-FILE.
 01 P-REC   PIC X(512).
+
+FD  P-FILE-CUR
+    DATA RECORD IS P-REC-CUR.
+
+01  P-REC-CUR   PIC X(512).
 
 
 WORKING-STORAGE SECTION.
@@ -148,6 +155,12 @@ WORKING-STORAGE SECTION.
 01 W-OUTPUT          PIC X(300).
 01 W-OUTPUT-LONG     PIC X(3000).
 
+*> File list temporary storage
+01 FILE-EOF          PIC X VALUE 'N'.
+01 FOUND-FILE        PIC X VALUE 'N'.
+01 FULL-NAME PIC X(100).
+01 SEARCH-NAME PIC X(100).
+
 
 PROCEDURE DIVISION.
 MAIN-SECTION.
@@ -255,7 +268,7 @@ POST-LOGIN-NAVIGATION.
                MOVE "Job search is under construction." TO W-MSG PERFORM DISP-MSG
                PERFORM POST-LOGIN-NAVIGATION
            WHEN "2"
-               PERFORM FIND-SOMEONE
+               PERFORM FIND-NAME
                PERFORM POST-LOGIN-NAVIGATION
            WHEN "3"
                PERFORM LEARN-SKILL
@@ -722,16 +735,16 @@ CREATE-EDIT-PROFILE.
 
        *> Experiences (0..3)
        MOVE 0 TO EXP-COUNT
-       MOVE "Add up to 3 experiences. Type YES to add, or DONE to skip/stop." 
+       MOVE "Add up to 3 experiences. Type YES to add, or DONE to skip/stop."
             TO W-MSG PERFORM DISP-MSG
 
        PERFORM VARYING I FROM 1 BY 1 UNTIL I > 3
            PERFORM UNTIL W-USR-INPT = "yes" OR W-USR-INPT = "done"
-               MOVE "Add an experience? Enter YES or DONE:" 
+               MOVE "Add an experience? Enter YES or DONE:"
                     TO W-MSG PERFORM DISP-MSG
                PERFORM READ-INPUT   *> this already lowercases & trims
                IF W-USR-INPT NOT = "yes" AND W-USR-INPT NOT = "done"
-                   MOVE "Invalid input. Please type YES or DONE." 
+                   MOVE "Invalid input. Please type YES or DONE."
                         TO W-MSG PERFORM DISP-MSG
                END-IF
            END-PERFORM
@@ -769,11 +782,11 @@ CREATE-EDIT-PROFILE.
 
        PERFORM VARYING I FROM 1 BY 1 UNTIL I > 3
            PERFORM UNTIL W-USR-INPT = "yes" OR W-USR-INPT = "done"
-               MOVE "Add an education entry? Enter YES or DONE:" 
+               MOVE "Add an education entry? Enter YES or DONE:"
                     TO W-MSG PERFORM DISP-MSG
                PERFORM READ-INPUT   *> lowercased & trimmed
                IF W-USR-INPT NOT = "yes" AND W-USR-INPT NOT = "done"
-                   MOVE "Invalid input. Please type YES or DONE." 
+                   MOVE "Invalid input. Please type YES or DONE."
                         TO W-MSG PERFORM DISP-MSG
                END-IF
            END-PERFORM
@@ -805,7 +818,7 @@ CREATE-EDIT-PROFILE.
        PERFORM PRINT-LINE
 
        PERFORM SAVE-PROFILE-TO-FILE
-       
+
        MOVE "Profile saved successfully." TO W-MSG PERFORM DISP-MSG
        PERFORM PRINT-LINE
        EXIT.
@@ -1184,9 +1197,9 @@ PRINT-PROFILE-CLEAN.
           INTO W-MSG
        END-STRING
        PERFORM DISP-MSG
-       PERFORM PRINT-LINE   
+       PERFORM PRINT-LINE
        EXIT.
-       
+
        *> Print name
        MOVE SPACES TO W-MSG
        STRING "Name: "                DELIMITED BY SIZE
@@ -1224,7 +1237,7 @@ PRINT-PROFILE-CLEAN.
        *> Print "about me"
        PERFORM PRINT-LINE
        IF FUNCTION LENGTH(FUNCTION TRIM(ABOUT-ME)) = 0
-           MOVE "About Me: (none)" TO W-MSG 
+           MOVE "About Me: (none)" TO W-MSG
            PERFORM DISP-MSG
        ELSE
            STRING "About Me: " DELIMITED BY SIZE
@@ -1270,7 +1283,7 @@ PRINT-PROFILE-CLEAN.
 
                *> Print description
                IF FUNCTION LENGTH(FUNCTION TRIM(EXP-DESC(VIEW-IDX))) = 0
-                   MOVE "    Description: (none)" TO W-MSG 
+                   MOVE "    Description: (none)" TO W-MSG
                    PERFORM DISP-MSG
                ELSE
                    STRING "    Description: " DELIMITED BY SIZE
@@ -1291,7 +1304,7 @@ PRINT-PROFILE-CLEAN.
        ELSE
            PERFORM VARYING VIEW-IDX FROM 1 BY 1 UNTIL VIEW-IDX > EDU-COUNT
                PERFORM PRINT-LINE
-               
+
                *> Print degree
                MOVE SPACES TO W-MSG
                STRING "    Degree: "          DELIMITED BY SIZE
@@ -1331,7 +1344,7 @@ PRINT-PROFILE-CLEAN.
 
 FIND-SOMEONE.
        PERFORM PRINT-LINE
-       
+
        MOVE "To be filled in" to W-MSG
        PERFORM DISP-MSG
 
@@ -1358,4 +1371,62 @@ APPEND-FROM-VIEW-LINE.
                END-STRING
            END-IF
        END-IF
+       EXIT.
+
+
+FIND-NAME.
+       MOVE "Enter full name to search:" TO W-MSG
+       PERFORM DISP-MSG
+       PERFORM READ-INPUT
+       MOVE FUNCTION TRIM(W-USR-INPT) TO SEARCH-NAME
+
+       *> Generate temporary file listing all .txt profiles
+       CALL "SYSTEM" USING "ls bin/profiles/*.txt > bin/profiles/filelist.txt"
+
+       MOVE "bin/profiles/filelist.txt" TO W-PROFILE-PATH-CUR
+
+       OPEN INPUT P-FILE-CUR
+       MOVE 'N' TO FILE-EOF
+
+       PERFORM UNTIL FILE-EOF = 'Y'
+           READ P-FILE-CUR
+               AT END
+                   MOVE 'Y' TO FILE-EOF
+               NOT AT END
+                   MOVE FUNCTION TRIM(P-REC-CUR) TO W-PROFILE-PATH
+                   IF W-PROFILE-PATH = "bin/profiles/filelist.txt"
+                       CONTINUE
+                   ELSE
+                       OPEN INPUT P-FILE
+                       PERFORM CLEAR-PROFILE-WS
+                       PERFORM PARSE-PROFILE-FILE
+                       CLOSE P-FILE
+
+                       MOVE SPACES TO FULL-NAME
+                       STRING
+                           FUNCTION LOWER-CASE(FUNCTION TRIM(FIRST-NAME)) DELIMITED BY SIZE
+                           FUNCTION LOWER-CASE(FUNCTION TRIM(LAST-NAME)) DELIMITED BY SIZE
+                           INTO FULL-NAME
+                       END-STRING
+
+                       IF FULL-NAME = W-USR-INPT
+                           MOVE 'Y' TO FOUND-FILE
+                           PERFORM PRINT-PROFILE-CLEAN
+                       END-IF
+                   END-IF
+
+           END-READ
+       END-PERFORM
+
+       CLOSE P-FILE
+
+       IF FOUND-FILE = 'N'
+           DISPLAY "Nobody by that name could be found."
+       ELSE
+           MOVE 'N' TO FOUND-FILE
+       END-IF
+
+       CLOSE P-FILE-CUR
+       CALL "SYSTEM" USING "rm /workspace/bin/profiles/filelist.txt"
+
        EXIT.
