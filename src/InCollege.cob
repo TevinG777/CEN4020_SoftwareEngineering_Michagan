@@ -199,6 +199,7 @@ MAIN-SECTION.
 
            *> Keep asking for username and password until the user gets it right
            PERFORM UNTIL FOUND
+               PERFORM PRINT-LINE
                MOVE "Please enter your username:" TO W-MSG
                PERFORM DISP-MSG
                PERFORM READ-INPUT-RAW
@@ -208,6 +209,7 @@ MAIN-SECTION.
                    MOVE "Please enter your password:" TO W-MSG
                    PERFORM DISP-MSG
                    PERFORM READ-INPUT-RAW
+                   PERFORM PRINT-LINE
 
                    IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 12
                        MOVE "Password too long (max 12)." TO W-MSG
@@ -253,7 +255,7 @@ POST-LOGIN-NAVIGATION.
                MOVE "Job search is under construction." TO W-MSG PERFORM DISP-MSG
                PERFORM POST-LOGIN-NAVIGATION
            WHEN "2"
-               MOVE "Find someone you know is under construction." TO W-MSG PERFORM DISP-MSG
+               PERFORM FIND-SOMEONE
                PERFORM POST-LOGIN-NAVIGATION
            WHEN "3"
                PERFORM LEARN-SKILL
@@ -453,6 +455,7 @@ CREATE-ACCOUNT.
        SET USERNAME-TAKEN TO TRUE
 
        PERFORM UNTIL USERNAME-FREE
+           PERFORM PRINT-LINE
            MOVE "Please enter a username (No Space/Special Characters):" TO W-MSG
            PERFORM DISP-MSG
            PERFORM READ-INPUT-RAW
@@ -501,6 +504,7 @@ CREATE-ACCOUNT.
 
        *> Set the CREATED-OK flag to true to indicate success
        SET CREATED-OK TO TRUE
+       PERFORM PRINT-LINE
        MOVE "Account created successfully!" TO W-MSG
        PERFORM DISP-MSG
        EXIT.
@@ -974,7 +978,6 @@ VIEW-PROFILE.
        PERFORM PRINT-PROFILE-CLEAN
        EXIT.
 
-
 PROGRAM-END.
     STOP RUN.
 
@@ -1326,6 +1329,16 @@ PRINT-PROFILE-CLEAN.
        PERFORM DISP-MSG   *> blank line for spacing
        EXIT.
 
+FIND-SOMEONE.
+       PERFORM PRINT-LINE
+       
+       MOVE "To be filled in" to W-MSG
+       PERFORM DISP-MSG
+
+       PERFORM PRINT-LINE
+       EXIT.
+
+*> Prints an empty line
 PRINT-LINE.
        MOVE SPACES TO W-MSG
        PERFORM DISP-MSG
@@ -1346,4 +1359,3 @@ APPEND-FROM-VIEW-LINE.
            END-IF
        END-IF
        EXIT.
-     
