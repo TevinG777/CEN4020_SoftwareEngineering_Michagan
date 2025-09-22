@@ -1341,16 +1341,7 @@ PRINT-PROFILE-CLEAN.
        MOVE SPACES TO W-MSG
        PERFORM DISP-MSG   *> blank line for spacing
        EXIT.
-
-FIND-SOMEONE.
-       PERFORM PRINT-LINE
-
-       MOVE "To be filled in" to W-MSG
-       PERFORM DISP-MSG
-
-       PERFORM PRINT-LINE
-       EXIT.
-
+      
 *> Prints an empty line
 PRINT-LINE.
        MOVE SPACES TO W-MSG
