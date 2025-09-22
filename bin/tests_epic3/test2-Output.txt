@@ -1,0 +1,36 @@
+Welcome to InCollege!
+Log In
+Create New Account
+Enter your choice:
+
+Please enter your username:
+Please enter your password:
+
+Welcome, testuser!
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
+Enter full name to search:
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
+Returning to main menu...
+Invalid selection. Please try again.
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
