@@ -1371,6 +1371,11 @@ FIND-NAME.
        PERFORM READ-INPUT
        MOVE FUNCTION TRIM(W-USR-INPT) TO SEARCH-NAME
 
+       IF SEARCH-NAME = SPACES
+            DISPLAY "Invalid input"
+            EXIT PARAGRAPH
+       END-IF
+      
        *> Generate temporary file listing all .txt profiles
        CALL "SYSTEM" USING "ls bin/profiles/*.txt > bin/profiles/filelist.txt"
 
