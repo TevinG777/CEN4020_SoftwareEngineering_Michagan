@@ -1,0 +1,10 @@
+# VS Code
+.vscode/*
+!.vscode/tasks.json
+
+# Devcontainer local stuff
+.devcontainer/local-*
+
+# OS
+.DS_Store
+Thumbs.db
