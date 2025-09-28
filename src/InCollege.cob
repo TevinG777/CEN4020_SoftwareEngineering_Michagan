@@ -185,6 +185,10 @@ WORKING-STORAGE SECTION.
 01 CON-FOUND PIC X VALUE 'N'.
 01 CON-SEARCH-NAME PIC X(50).
 
+*> migration to memory helpers
+01 SKIP-CONN-BLOCK     PIC X VALUE 'N'.
+01 INSERTED-CONN-BLK   PIC X VALUE 'N'.
+
 
 PROCEDURE DIVISION.
 MAIN-SECTION.
@@ -194,6 +198,7 @@ MAIN-SECTION.
 
        *> Load users from InCollege-Users.txt into memory
        PERFORM LOAD-USERS.
+       PERFORM MIGRATE-PROFILES
 
        MOVE "Welcome to InCollege!" TO W-MSG.
        PERFORM DISP-MSG.
@@ -306,7 +311,7 @@ POST-LOGIN-NAVIGATION.
            WHEN "6"
                PERFORM GET-CONNECTIONS
                PERFORM PARSE-CONNECTIONS
-
+               PERFORM PRINT-CONNECTIONS
                PERFORM POST-LOGIN-NAVIGATION
            WHEN "7"
                MOVE "Returning to main menu..." TO W-MSG PERFORM DISP-MSG
@@ -1397,6 +1402,91 @@ APPEND-FROM-VIEW-LINE.
        END-IF
        EXIT.
 
+MIGRATE-PROFILES.
+       *> list all profile files into a temp list
+       CALL "SYSTEM" USING "ls bin/profiles/*.txt > bin/profiles/filelist.txt"
+
+       MOVE "bin/profiles/filelist.txt" TO W-PROFILE-PATH-CUR
+       OPEN INPUT P-FILE-CUR
+       MOVE 'N' TO FILE-EOF
+
+       PERFORM UNTIL FILE-EOF = 'Y'
+           READ P-FILE-CUR
+               AT END
+                   MOVE 'Y' TO FILE-EOF
+               NOT AT END
+                   MOVE FUNCTION TRIM(P-REC-CUR) TO W-PROFILE-PATH
+                   IF W-PROFILE-PATH = "bin/profiles/filelist.txt"
+                       CONTINUE
+                   ELSE
+                       PERFORM REWRITE-WITH-CONNECTIONS
+                   END-IF
+           END-READ
+       END-PERFORM
+
+       CLOSE P-FILE-CUR
+       CALL "SYSTEM" USING "rm /workspace/bin/profiles/filelist.txt"
+       EXIT.
+
+
+REWRITE-WITH-CONNECTIONS.
+       *> read original, strip any existing [CONNECTIONS] block,
+       *> and re-insert a fresh, empty one just before [EOF]
+       MOVE 'N' TO SKIP-CONN-BLOCK
+       MOVE 'N' TO INSERTED-CONN-BLK
+       MOVE 'N' TO FILE-EOF
+
+       OPEN INPUT  P-FILE
+       OPEN OUTPUT P-TEMP-FILE
+
+       PERFORM UNTIL FILE-EOF = 'Y'
+           READ P-FILE INTO P-REC
+               AT END
+                   MOVE 'Y' TO FILE-EOF
+               NOT AT END
+                   MOVE FUNCTION TRIM(P-REC) TO VIEW-LINE
+
+                   *> begin skipping existing connections block
+                   IF VIEW-LINE = "[CONNECTIONS]"
+                       MOVE 'Y' TO SKIP-CONN-BLOCK
+                       CONTINUE
+                   END-IF
+                   IF VIEW-LINE = "[/CONNECTIONS]"
+                       MOVE 'N' TO SKIP-CONN-BLOCK
+                       CONTINUE
+                   END-IF
+
+                   *> when we hit EOF, inject the new block before it (once)
+                   IF VIEW-LINE = "[EOF]"
+                       IF INSERTED-CONN-BLK = 'N'
+                           MOVE "[CONNECTIONS]"  TO P-TEMP-REC WRITE P-TEMP-REC
+                           MOVE "CONNECTIONS: "  TO P-TEMP-REC WRITE P-TEMP-REC
+                           MOVE "[/CONNECTIONS]" TO P-TEMP-REC WRITE P-TEMP-REC
+                           MOVE 'Y' TO INSERTED-CONN-BLK
+                       END-IF
+                       *> now write EOF line
+                       WRITE P-TEMP-REC FROM VIEW-LINE
+                   ELSE
+                       *> copy all non-connection lines through
+                       IF SKIP-CONN-BLOCK = 'N'
+                           WRITE P-TEMP-REC FROM P-REC
+                       END-IF
+                   END-IF
+           END-READ
+       END-PERFORM
+
+       CLOSE P-FILE
+       CLOSE P-TEMP-FILE
+
+       *> replace the original file with the temp
+       STRING "mv bin/profiles/temp.txt " DELIMITED BY SIZE
+              W-PROFILE-PATH              DELIMITED BY SIZE
+         INTO W-TMP
+       END-STRING
+       CALL "SYSTEM" USING W-TMP
+
+       EXIT.
+
 
 FIND-NAME.
        MOVE "Enter full name to search:" TO W-MSG
@@ -1621,6 +1711,26 @@ PARSE-CONNECTIONS.
            END-IF
        END-PERFORM
 
+       EXIT.
+
+       PRINT-CONNECTIONS.
+       *> Check if there are any connections
+       IF CONNECTIONS-COUNT = 0
+           MOVE "No connections found" TO W-MSG
+           PERFORM DISP-MSG
+       ELSE
+           MOVE "Connections:" TO W-MSG
+           PERFORM DISP-MSG
+           PERFORM VARYING CONN-IDX FROM 1 BY 1 UNTIL CONN-IDX > CONNECTIONS-COUNT
+               STRING
+                   " - " DELIMITED BY SIZE
+                   CONNECTIONS-ENTRY(CONN-IDX) DELIMITED BY SIZE
+                   INTO W-MSG
+               END-STRING
+               PERFORM DISP-MSG
+               *>DISPLAY " - " CONNECTIONS-ENTRY(CONN-IDX)
+           END-PERFORM
+       END-IF
        EXIT.
 
 *> Takes CON-SEARCH-NAME and outputs CON-FOUND
