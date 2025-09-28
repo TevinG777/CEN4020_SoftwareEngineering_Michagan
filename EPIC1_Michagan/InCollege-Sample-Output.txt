@@ -1,0 +1,43 @@
+Welcome to InCollege!
+Log In
+Create New Account
+Enter your choice:
+Please enter your username:
+Please enter your password:
+Welcome, Tevin!
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. Return to main menu
+Enter choice (1-4):
+Job search is under construction.
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. Return to main menu
+Enter choice (1-4):
+Learn a New Skill - choose one from the list:
+1. Public Speaking
+2. Microsoft Excel
+3. Time Management
+4. Leadership
+5. Coding Fundamentals
+6. Return to previous menu
+Enter choice (1-6):
+This skill page is under construction.
+Learn a New Skill - choose one from the list:
+1. Public Speaking
+2. Microsoft Excel
+3. Time Management
+4. Leadership
+5. Coding Fundamentals
+6. Return to previous menu
+Enter choice (1-6):
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. Return to main menu
+Enter choice (1-4):

@@ -1,0 +1,85 @@
+Welcome to InCollege!
+Log In
+Create New Account
+Enter your choice:
+Please enter your username:
+Please enter your password:
+Welcome, Tevin!
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
+
+===== CREATE/EDIT PROFILE =====
+
+Please enter First Name:
+Please enter Last Name:
+Please enter University/College Attended:
+Please enter Major:
+Enter Graduation Year (YYYY):
+About Me (optional). Must be 90 charaters or less:
+Add up to 3 experiences. Type YES to add, or DONE to skip/stop.
+Add an experience? Enter YES or DONE:
+Invalid input. Please type YES or DONE.
+Add an experience? Enter YES or DONE:
+Invalid input. Please type YES or DONE.
+Add an experience? Enter YES or DONE:
+Title (required):
+Company/Organization (required):
+Dates ('Summer 2024' or 'Jan 2023 - May 2024') (required):
+Short description (optional). Type END to finish description:
+Add an experience? Enter YES or DONE:
+Invalid input. Please type YES or DONE.
+Add an experience? Enter YES or DONE:
+Title (required):
+Company/Organization (required):
+Dates ('Summer 2024' or 'Jan 2023 - May 2024') (required):
+Short description (optional). Type END to finish description:
+Add an experience? Enter YES or DONE:
+Invalid input. Please type YES or DONE.
+Add an experience? Enter YES or DONE:
+Add up to 3 education entries. Type YES to add, or DONE to skip/stop.
+
+===== END CREATE/EDIT PROFILE =====
+
+Profile saved successfully.
+
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
+Invalid selection. Please try again.
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
+Job search is under construction.
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
+Find someone you know is under construction.
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Return to main menu
+Enter choice (1-6):
