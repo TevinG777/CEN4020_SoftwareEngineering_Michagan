@@ -1623,26 +1623,6 @@ PARSE-CONNECTIONS.
 
        EXIT.
 
-       PRINT-CONNECTIONS.
-       *> Check if there are any connections
-       IF CONNECTIONS-COUNT = 0
-           MOVE "No connections found" TO W-MSG
-           PERFORM DISP-MSG
-       ELSE
-           MOVE "Connections:" TO W-MSG
-           PERFORM DISP-MSG
-           PERFORM VARYING CONN-IDX FROM 1 BY 1 UNTIL CONN-IDX > CONNECTIONS-COUNT
-               STRING
-                   " - " DELIMITED BY SIZE
-                   CONNECTIONS-ENTRY(CONN-IDX) DELIMITED BY SIZE
-                   INTO W-MSG
-               END-STRING
-               PERFORM DISP-MSG
-               *>DISPLAY " - " CONNECTIONS-ENTRY(CONN-IDX)
-           END-PERFORM
-       END-IF
-       EXIT.
-
 *> Takes CON-SEARCH-NAME and outputs CON-FOUND
 COMPARE-CONNECTIONS.
        *> Initialize
