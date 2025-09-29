@@ -20,7 +20,7 @@ Enter full name to search:
 
 ===== USER PROFILE =====
 
-Name: Marko Kuzmov
+Name: Tevin Gajadhar
 University: University of South Florida
 Major: Comptuer Science
 Graduation Year: 2026
@@ -48,6 +48,8 @@ Education:
 Send connection request?
 1. Yes
 2. No
+Sending request
+Connection added successfully.
 Please select an option:
 1. Search for a job
 2. Find someone you know
