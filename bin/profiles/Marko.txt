@@ -1,0 +1,42 @@
+USERNAME: marko
+[PROFILE]
+FIRST-NAME: Marko
+LAST-NAME: Kuzmov
+UNIVERSITY: University of South Florida
+MAJOR: Computer Science
+GRAD-YEAR: 2026
+[ABOUT]
+BEGIN
+Senior a USF studying Computer Science. Interested in software development and Embedded Systems.
+END
+[/ABOUT]
+[EXPERIENCES]
+COUNT: 2
+[[EXP]]
+TITLE: Software Engineer
+COMPANY: Seimens Energy
+DATES: Jun 2023 - May 2025
+[DESC]
+BEGIN
+DONE
+END
+[/DESC]
+[[/EXP]]
+[[EXP]]
+TITLE: Software Engineer
+COMPANY: Aevex Aerospace
+DATES: May 2025 - Setp 2025
+[DESC]
+BEGIN
+DONE
+END
+[/DESC]
+[[/EXP]]
+[/EXPERIENCES]
+[EDUCATION]
+COUNT: 0
+[/EDUCATION]
+[CONNECTIONS]
+CONNECTIONS:
+[/CONNECTIONS]
+[EOF]
