@@ -17,7 +17,7 @@ FILE-CONTROL.
            FILE STATUS IS P-STAT.
        SELECT P-FILE-CUR ASSIGN TO W-PROFILE-PATH-CUR
            ORGANIZATION IS LINE SEQUENTIAL.
-       SELECT P-TEMP-FILE ASSIGN TO "bin/profiles/temp.txt"
+       SELECT P-TEMP-FILE ASSIGN TO "bin/profiles/te-mp.txt"
            ORGANIZATION IS LINE SEQUENTIAL.
 
 
@@ -198,7 +198,6 @@ MAIN-SECTION.
 
        *> Load users from InCollege-Users.txt into memory
        PERFORM LOAD-USERS.
-       PERFORM MIGRATE-PROFILES
 
        MOVE "Welcome to InCollege!" TO W-MSG.
        PERFORM DISP-MSG.
@@ -692,12 +691,11 @@ INIT-PROFILE-FOR-USER.
        EXIT.
 
 BUILD-PROFILE-PATH.
-       MOVE FUNCTION LOWER-CASE(FUNCTION TRIM(W-USERNAME)) TO W-USER-LOW
        MOVE SPACES TO W-PROFILE-PATH
        STRING
-           "bin/profiles/"        DELIMITED BY SIZE
-           W-USER-LOW             DELIMITED BY SPACE   *> avoids trailing spaces
-           ".txt"                 DELIMITED BY SIZE
+           "bin/profiles/"           DELIMITED BY SIZE
+           FUNCTION TRIM(W-USERNAME) DELIMITED BY SPACE   *> avoids trailing spaces
+           ".txt"                    DELIMITED BY SIZE
          INTO W-PROFILE-PATH
        END-STRING
        EXIT.
@@ -1402,93 +1400,8 @@ APPEND-FROM-VIEW-LINE.
        END-IF
        EXIT.
 
-MIGRATE-PROFILES.
-       *> list all profile files into a temp list
-       CALL "SYSTEM" USING "ls bin/profiles/*.txt > bin/profiles/filelist.txt"
-
-       MOVE "bin/profiles/filelist.txt" TO W-PROFILE-PATH-CUR
-       OPEN INPUT P-FILE-CUR
-       MOVE 'N' TO FILE-EOF
-
-       PERFORM UNTIL FILE-EOF = 'Y'
-           READ P-FILE-CUR
-               AT END
-                   MOVE 'Y' TO FILE-EOF
-               NOT AT END
-                   MOVE FUNCTION TRIM(P-REC-CUR) TO W-PROFILE-PATH
-                   IF W-PROFILE-PATH = "bin/profiles/filelist.txt"
-                       CONTINUE
-                   ELSE
-                       PERFORM REWRITE-WITH-CONNECTIONS
-                   END-IF
-           END-READ
-       END-PERFORM
-
-       CLOSE P-FILE-CUR
-       CALL "SYSTEM" USING "rm /workspace/bin/profiles/filelist.txt"
-       EXIT.
-
-
-REWRITE-WITH-CONNECTIONS.
-       *> read original, strip any existing [CONNECTIONS] block,
-       *> and re-insert a fresh, empty one just before [EOF]
-       MOVE 'N' TO SKIP-CONN-BLOCK
-       MOVE 'N' TO INSERTED-CONN-BLK
-       MOVE 'N' TO FILE-EOF
-
-       OPEN INPUT  P-FILE
-       OPEN OUTPUT P-TEMP-FILE
-
-       PERFORM UNTIL FILE-EOF = 'Y'
-           READ P-FILE INTO P-REC
-               AT END
-                   MOVE 'Y' TO FILE-EOF
-               NOT AT END
-                   MOVE FUNCTION TRIM(P-REC) TO VIEW-LINE
-
-                   *> begin skipping existing connections block
-                   IF VIEW-LINE = "[CONNECTIONS]"
-                       MOVE 'Y' TO SKIP-CONN-BLOCK
-                       CONTINUE
-                   END-IF
-                   IF VIEW-LINE = "[/CONNECTIONS]"
-                       MOVE 'N' TO SKIP-CONN-BLOCK
-                       CONTINUE
-                   END-IF
-
-                   *> when we hit EOF, inject the new block before it (once)
-                   IF VIEW-LINE = "[EOF]"
-                       IF INSERTED-CONN-BLK = 'N'
-                           MOVE "[CONNECTIONS]"  TO P-TEMP-REC WRITE P-TEMP-REC
-                           MOVE "CONNECTIONS: "  TO P-TEMP-REC WRITE P-TEMP-REC
-                           MOVE "[/CONNECTIONS]" TO P-TEMP-REC WRITE P-TEMP-REC
-                           MOVE 'Y' TO INSERTED-CONN-BLK
-                       END-IF
-                       *> now write EOF line
-                       WRITE P-TEMP-REC FROM VIEW-LINE
-                   ELSE
-                       *> copy all non-connection lines through
-                       IF SKIP-CONN-BLOCK = 'N'
-                           WRITE P-TEMP-REC FROM P-REC
-                       END-IF
-                   END-IF
-           END-READ
-       END-PERFORM
-
-       CLOSE P-FILE
-       CLOSE P-TEMP-FILE
-
-       *> replace the original file with the temp
-       STRING "mv bin/profiles/temp.txt " DELIMITED BY SIZE
-              W-PROFILE-PATH              DELIMITED BY SIZE
-         INTO W-TMP
-       END-STRING
-       CALL "SYSTEM" USING W-TMP
-
-       EXIT.
-
-
 FIND-NAME.
+       MOVE 'N' TO FOUND-FILE
        MOVE "Enter full name to search:" TO W-MSG
        PERFORM DISP-MSG
        PERFORM READ-INPUT
@@ -1501,9 +1414,9 @@ FIND-NAME.
        END-IF
 
        *> Generate temporary file listing all .txt profiles
-       CALL "SYSTEM" USING "ls bin/profiles/*.txt > bin/profiles/filelist.txt"
+       CALL "SYSTEM" USING "ls bin/profiles/*.txt > bin/profiles/file-list.txt"
 
-       MOVE "bin/profiles/filelist.txt" TO W-PROFILE-PATH-CUR
+       MOVE "bin/profiles/file-list.txt" TO W-PROFILE-PATH-CUR
 
        OPEN INPUT P-FILE-CUR
        MOVE 'N' TO FILE-EOF
@@ -1514,7 +1427,7 @@ FIND-NAME.
                    MOVE 'Y' TO FILE-EOF
                NOT AT END
                    MOVE FUNCTION TRIM(P-REC-CUR) TO W-PROFILE-PATH
-                   IF W-PROFILE-PATH = "bin/profiles/filelist.txt"
+                   IF W-PROFILE-PATH = "bin/profiles/file-list.txt"
                        CONTINUE
                    ELSE
                        OPEN INPUT P-FILE
@@ -1539,6 +1452,7 @@ FIND-NAME.
                                DELIMITED BY ".txt"
                                INTO SEARCH-NAME
                            END-UNSTRING
+
                        END-IF
                    END-IF
 
@@ -1547,6 +1461,13 @@ FIND-NAME.
 
        CLOSE P-FILE
        CLOSE P-FILE-CUR
+       CALL "SYSTEM" USING "rm /workspace/bin/profiles/file-list.txt"
+
+       IF SEARCH-NAME = W-USERNAME
+           MOVE "Cannot create connection with self, returning to menu." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
 
        IF FOUND-FILE = 'Y'
 
@@ -1556,11 +1477,26 @@ FIND-NAME.
                PERFORM DISP-MSG
            MOVE "2. No" TO W-MSG
                PERFORM DISP-MSG
+
+           PERFORM UNTIL W-USR-INPT = '1' OR W-USR-INPT = 'yes'
            PERFORM READ-INPUT
-           IF W-USR-INPT = '1' OR W-USR-INPT = 'yes'
-           MOVE "Sending request" TO W-MSG
+
+               IF W-USR-INPT = '2' OR W-USR-INPT = 'no'
+                   MOVE "Returning to main menu." TO W-MSG
+                   PERFORM DISP-MSG
+                   EXIT PERFORM
+               END-IF
+
+               IF W-USR-INPT = '1' OR W-USR-INPT = 'yes'
+                   MOVE "Sending request" TO W-MSG
+                   PERFORM DISP-MSG
+                   PERFORM ADD-CONNECTION
+                   EXIT PERFORM
+               END-IF
+
+               MOVE "Invalid response please try again" TO W-MSG
                PERFORM DISP-MSG
-           PERFORM ADD-CONNECTION
+           END-PERFORM
 
        END-IF
 
@@ -1570,7 +1506,6 @@ FIND-NAME.
        ELSE
            MOVE 'N' TO FOUND-FILE
        END-IF
-       CALL "SYSTEM" USING "rm /workspace/bin/profiles/filelist.txt"
 
        PERFORM BUILD-PROFILE-PATH
 
@@ -1646,7 +1581,7 @@ ADD-CONNECTION.
        CLOSE P-TEMP-FILE
 
        *> Replace original with temp
-       STRING "mv bin/profiles/temp.txt " DELIMITED BY SIZE
+       STRING "mv bin/profiles/te-mp.txt " DELIMITED BY SIZE
            W-PROFILE-PATH                 DELIMITED BY SIZE
            INTO W-TMP
        END-STRING
