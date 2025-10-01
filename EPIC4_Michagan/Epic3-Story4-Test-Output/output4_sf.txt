@@ -1,0 +1,63 @@
+*> Check for invalid request (already received request from that person)
+
+Welcome to InCollege!
+Log In
+Create New Account
+Enter your choice:
+
+Please enter your username:
+Please enter your password:
+
+Welcome, secondusername!
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Check Connections
+7. Return to main menu
+Enter choice (1-6):
+Enter full name to search:
+
+===== USER PROFILE =====
+
+Name: Hello World
+University: USF
+Major: Computer Science
+Graduation Year: 2022
+
+About Me: I like to play games.
+
+Experiences:
+
+    Title: Software Engineer
+    Company: Google
+    Dates: Fall 2021
+    Description: I did some computer stuff there.
+
+    Title: Software Developer
+    Company: Apple
+    Dates: Jan 2013 - Jan 2015
+    Description: I did some developing stuff there.
+
+Education:
+
+    (none)
+
+===== END USER PROFILE =====
+
+Send connection request?
+1. Yes
+2. No
+Sending request
+This user has already sent you a connection request.
+Please select an option:
+1. Search for a job
+2. Find someone you know
+3. Learn a new skill
+4. View my profile
+5. Create/Edit Profile
+6. Check Connections
+7. Return to main menu
+Enter choice (1-6):
