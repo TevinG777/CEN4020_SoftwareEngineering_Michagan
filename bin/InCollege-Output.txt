@@ -1,71 +1,25 @@
 Welcome to InCollege!
-Log In
-Create New Account
+1. Log In
+2. Create New Account
 Enter your choice:
 
 Please enter your username:
 Please enter your password:
 
+You have successfully logged in.
 Welcome, Tevin!
-Please select an option:
-1. Search for a job
-2. Find someone you know
-3. Learn a new skill
-4. View my profile
-5. Create/Edit Profile
-6. Check Connections
-7. Return to main menu
-Enter choice (1-6):
-Enter full name to search:
-
-===== USER PROFILE =====
-
-Name: Marko Kuzmov
-University: University of South Florida
-Major: Comptuer Science
-Graduation Year: 2026
-
-About Me: Senior at USF studying Computer Science. Interested in software development and Embedded S
-
-Experiences:
-
-    Title: Software Engineer
-    Company: Seimens Energy
-    Dates: Jun 2023 - May 2025
-    Description: Worked as a Data Engineer
-
-    Title: Software Engineer
-    Company: Aevex Aerospace
-    Dates: May 2025 - Sept 2025
-    Description: Worked as a Software Engineer
-
-Education:
-
-    (none)
-
-===== END USER PROFILE =====
-
-Send connection request?
-1. Yes
-2. No
-Please select an option:
-1. Search for a job
-2. Find someone you know
-3. Learn a new skill
-4. View my profile
-5. Create/Edit Profile
-6. Check Connections
-7. Return to main menu
-Enter choice (1-6):
-Connections:
- - Opal
- - Tevin
-Please select an option:
-1. Search for a job
-2. Find someone you know
-3. Learn a new skill
-4. View my profile
-5. Create/Edit Profile
-6. Check Connections
-7. Return to main menu
-Enter choice (1-6):
+1. View My Profile
+2. Search for User
+3. Learn a New Skill
+4. View My Pending Connection Requests
+5. View My Network
+Enter your choice:
+--- Your Network ---
+Connected with: Opal
+--------------------
+1. View My Profile
+2. Search for User
+3. Learn a New Skill
+4. View My Pending Connection Requests
+5. View My Network
+Enter your choice:
