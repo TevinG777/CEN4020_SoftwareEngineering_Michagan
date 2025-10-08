@@ -20,6 +20,10 @@ FILE-CONTROL.
        SELECT P-TEMP-FILE ASSIGN TO "bin/profiles/te-mp.txt"
            ORGANIZATION IS LINE SEQUENTIAL.
 
+       SELECT EC-FILE ASSIGN TO "bin/established-connections.txt"
+           ORGANIZATION IS LINE SEQUENTIAL.
+
+
 
 DATA DIVISION.
 FILE SECTION.
@@ -43,6 +47,10 @@ FD P-TEMP-FILE
        RECORD CONTAINS 5000 CHARACTERS
        DATA RECORD IS P-TEMP-REC.
 01 P-TEMP-REC PIC X(512).
+
+FD EC-FILE.
+01 EC-REC PIC X(120).
+
 
 
 
@@ -189,88 +197,87 @@ WORKING-STORAGE SECTION.
 01 SKIP-CONN-BLOCK     PIC X VALUE 'N'.
 01 INSERTED-CONN-BLK   PIC X VALUE 'N'.
 
+*> ---- Established connections helpers ----
+01 EC-LINE        PIC X(120).
+01 EC-U1          PIC X(50).
+01 EC-U2          PIC X(50).
+01 EC-OTHER       PIC X(50).
+01 EC-PAIR        PIC X(120).
+01 EC-EXISTS      PIC X VALUE 'N'.
+01 EC-COUNT       PIC 9(4) VALUE 0.
+
+*> ---- Removal / rewrite helpers ----
+01 RQ-NAME        PIC X(50).      *> pending requester being processed
+01 NEW-CONN-LINE  PIC X(5000).
+01 ANY-WRITTEN    PIC X VALUE 'N'.
+
+*> ---- Fetch other user's summary (for network print) ----
+01 OTHER-PATH     PIC X(256).
+01 SAVE-FIRST     PIC X(30).
+01 SAVE-LAST      PIC X(30).
+01 SAVE-UNIV      PIC X(60).
+01 SAVE-MAJOR     PIC X(40).
+01 SAVE-YEAR      PIC X(4).
+
 
 PROCEDURE DIVISION.
 MAIN-SECTION.
        OPEN INPUT I-FILE
-           INPUT U-FILE
-           OUTPUT O-FILE.
+            INPUT U-FILE
+            OUTPUT O-FILE.
 
-       *> Load users from InCollege-Users.txt into memory
        PERFORM LOAD-USERS.
 
-       MOVE "Welcome to InCollege!" TO W-MSG.
-       PERFORM DISP-MSG.
-       MOVE "Log In" TO W-MSG.
-       PERFORM DISP-MSG.
-       MOVE "Create New Account" TO W-MSG.
-       PERFORM DISP-MSG.
-       MOVE "Enter your choice:" TO W-MSG.
-       PERFORM DISP-MSG.
+       MOVE "Welcome to InCollege!" TO W-MSG PERFORM DISP-MSG
+       MOVE "1. Log In"             TO W-MSG PERFORM DISP-MSG
+       MOVE "2. Create New Account" TO W-MSG PERFORM DISP-MSG
+       MOVE "Enter your choice:"    TO W-MSG PERFORM DISP-MSG
 
-       *> Read user input for line 1 of the program
-       PERFORM READ-INPUT.
+       PERFORM READ-INPUT
 
-       *> Keep prompting the user until a valid selection is made
-       PERFORM UNTIL W-USR-INPT = "createnewaccount" OR W-USR-INPT = "login"
+       PERFORM UNTIL W-USR-INPT = "1" OR W-USR-INPT = "2" OR
+                        W-USR-INPT = "login" OR W-USR-INPT = "createnewaccount"
            MOVE "Invalid selection. Please try again:" TO W-MSG
            PERFORM DISP-MSG
-           *> Check for the next line in the input file
            PERFORM READ-INPUT
        END-PERFORM
 
-       *> Set the NOT-CREATED flag to true to start
        SET NOT-CREATED TO TRUE
 
-       *> Process good input
-       IF W-USR-INPT = "createnewaccount"
-           *> if create new account is selected
+       IF W-USR-INPT = "2" OR W-USR-INPT = "createnewaccount"
            PERFORM CREATE-ACCOUNT
-
-           *> Auto-login only if create actually succeeded
            IF CREATED-OK
                MOVE USER-USERNAME(USER-COUNT) TO W-USERNAME
                MOVE USER-PASSWORD(USER-COUNT) TO W-PASSWORD
                PERFORM LOG-IN
-               SET NOT-CREATED TO TRUE  *> reset flag so it doesn’t affect later logic
+               SET NOT-CREATED TO TRUE
            END-IF
-
        ELSE
            SET NOT-FOUND TO TRUE
-
-           *> Keep asking for username and password until the user gets it right
            PERFORM UNTIL FOUND
                PERFORM PRINT-LINE
-               MOVE "Please enter your username:" TO W-MSG
-               PERFORM DISP-MSG
+               MOVE "Please enter your username:" TO W-MSG PERFORM DISP-MSG
                PERFORM READ-INPUT-RAW
                PERFORM VALIDATE-USERNAME
-
                IF VALID-USERNAME
-                   MOVE "Please enter your password:" TO W-MSG
-                   PERFORM DISP-MSG
+                   MOVE "Please enter your password:" TO W-MSG PERFORM DISP-MSG
                    PERFORM READ-INPUT-RAW
                    PERFORM PRINT-LINE
-
                    IF FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) > 12
-                       MOVE "Password too long (max 12)." TO W-MSG
-                       PERFORM DISP-MSG
+                       MOVE "Password too long (max 12)." TO W-MSG PERFORM DISP-MSG
                    ELSE
                        MOVE FUNCTION TRIM(W-USR-INPT) TO W-PASSWORD
                        PERFORM LOG-IN
                    END-IF
                ELSE
-                   MOVE "Invalid username (no spaces, not blank)." TO W-MSG
-                   PERFORM DISP-MSG
-           END-IF
+                   MOVE "Invalid username (no spaces, not blank)." TO W-MSG PERFORM DISP-MSG
+               END-IF
            END-PERFORM
+       END-IF
 
-       END-IF.
-
-       *> User profile creation
        IF FOUND OR CREATED-OK
            PERFORM INIT-PROFILE-FOR-USER
-           PERFORM POST-LOGIN-NAVIGATION
+           PERFORM POST-LOGIN-NAVIGATION-W5
        ELSE
            CLOSE I-FILE U-FILE O-FILE
            PERFORM PROGRAM-END
@@ -278,48 +285,40 @@ MAIN-SECTION.
 
 
 
+
 GO TO PROGRAM-END.
 
-POST-LOGIN-NAVIGATION.
-       MOVE "Please select an option:" TO W-MSG PERFORM DISP-MSG
-       MOVE "1. Search for a job"      TO W-MSG PERFORM DISP-MSG
-       MOVE "2. Find someone you know" TO W-MSG PERFORM DISP-MSG
-       MOVE "3. Learn a new skill"     TO W-MSG PERFORM DISP-MSG
-       MOVE "4. View my profile"       TO W-MSG PERFORM DISP-MSG
-       MOVE "5. Create/Edit Profile"   TO W-MSG PERFORM DISP-MSG
-       MOVE "6. Check Connections"   TO W-MSG PERFORM DISP-MSG
-       MOVE "7. Return to main menu"   TO W-MSG PERFORM DISP-MSG
-       MOVE "Enter choice (1-6):"      TO W-MSG PERFORM DISP-MSG
+POST-LOGIN-NAVIGATION-W5.
+       MOVE "1. View My Profile"                     TO W-MSG PERFORM DISP-MSG
+       MOVE "2. Search for User"                     TO W-MSG PERFORM DISP-MSG
+       MOVE "3. Learn a New Skill"                   TO W-MSG PERFORM DISP-MSG
+       MOVE "4. View My Pending Connection Requests" TO W-MSG PERFORM DISP-MSG
+       MOVE "5. View My Network"                     TO W-MSG PERFORM DISP-MSG
+       MOVE "Enter your choice:"                     TO W-MSG PERFORM DISP-MSG
        PERFORM READ-INPUT
 
        EVALUATE W-USR-INPT
            WHEN "1"
-               MOVE "Job search is under construction." TO W-MSG PERFORM DISP-MSG
-               PERFORM POST-LOGIN-NAVIGATION
+               PERFORM VIEW-PROFILE
+               PERFORM POST-LOGIN-NAVIGATION-W5
            WHEN "2"
                PERFORM FIND-NAME
-               PERFORM POST-LOGIN-NAVIGATION
+               PERFORM POST-LOGIN-NAVIGATION-W5
            WHEN "3"
                PERFORM LEARN-SKILL
+               PERFORM POST-LOGIN-NAVIGATION-W5
            WHEN "4"
-               PERFORM VIEW-PROFILE
-               PERFORM POST-LOGIN-NAVIGATION
+               PERFORM VIEW-PENDING-REQUESTS
+               PERFORM POST-LOGIN-NAVIGATION-W5
            WHEN "5"
-               PERFORM CREATE-EDIT-PROFILE
-               PERFORM POST-LOGIN-NAVIGATION
-           WHEN "6"
-               PERFORM GET-CONNECTIONS
-               PERFORM PARSE-CONNECTIONS
-               PERFORM PRINT-CONNECTIONS
-               PERFORM POST-LOGIN-NAVIGATION
-           WHEN "7"
-               MOVE "Returning to main menu..." TO W-MSG PERFORM DISP-MSG
-               EXIT
+               PERFORM VIEW-NETWORK
+               PERFORM POST-LOGIN-NAVIGATION-W5
            WHEN OTHER
                MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
-               PERFORM POST-LOGIN-NAVIGATION
+               PERFORM POST-LOGIN-NAVIGATION-W5
        END-EVALUATE
        EXIT.
+
 
 
 LEARN-SKILL.
@@ -1681,4 +1680,256 @@ COMPARE-CONNECTIONS.
        END-PERFORM
 
        *> CON-FOUND = 'Y' if username exists, 'N' otherwise
+       EXIT.
+
+
+VIEW-PENDING-REQUESTS.
+       PERFORM BUILD-PROFILE-PATH
+       MOVE "-----------------------------------"           TO W-MSG PERFORM DISP-MSG
+       MOVE "--- Pending Connection Requests ---"           TO W-MSG PERFORM DISP-MSG
+
+       PERFORM GET-CONNECTIONS
+       PERFORM PARSE-CONNECTIONS
+
+       IF CONNECTIONS-COUNT = 0
+           MOVE "(none)" TO W-MSG PERFORM DISP-MSG
+           MOVE "-----------------------------------"        TO W-MSG PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       PERFORM VARYING CONN-IDX FROM 1 BY 1 UNTIL CONN-IDX > CONNECTIONS-COUNT
+           MOVE FUNCTION TRIM(CONNECTIONS-ENTRY(CONN-IDX)) TO RQ-NAME
+           IF RQ-NAME NOT = SPACES
+               MOVE SPACES TO W-MSG
+               STRING "Request from: " RQ-NAME INTO W-MSG
+               END-STRING
+               PERFORM DISP-MSG
+
+               MOVE "1. Accept" TO W-MSG PERFORM DISP-MSG
+               MOVE "2. Reject" TO W-MSG PERFORM DISP-MSG
+               MOVE SPACES TO W-MSG
+               STRING "Enter your choice for " RQ-NAME ":" INTO W-MSG
+               END-STRING
+               PERFORM DISP-MSG
+
+               PERFORM READ-INPUT
+
+               IF W-USR-INPT = "1" OR W-USR-INPT = "accept"
+                   PERFORM ACCEPT-REQUEST
+                   MOVE SPACES TO W-MSG
+                   STRING "Connection request from " RQ-NAME " accepted!"
+                      INTO W-MSG
+                   END-STRING
+                   PERFORM DISP-MSG
+               ELSE
+                   PERFORM REJECT-REQUEST
+                   MOVE SPACES TO W-MSG
+                   STRING "Connection request from " RQ-NAME " rejected."
+                      INTO W-MSG
+                   END-STRING
+                   PERFORM DISP-MSG
+               END-IF
+           END-IF
+       END-PERFORM
+
+       MOVE "-----------------------------------" TO W-MSG PERFORM DISP-MSG
+       EXIT.
+
+ACCEPT-REQUEST.
+       *> 1) Add to established connections (if not already there)
+       MOVE FUNCTION TRIM(W-USERNAME) TO EC-U1
+       MOVE FUNCTION TRIM(RQ-NAME)    TO EC-U2
+       PERFORM NORMALIZE-PAIR
+       PERFORM ENSURE-PAIR-IN-ECFILE
+
+       *> 2) Remove from pending list in current user's profile
+       PERFORM REMOVE-PENDING-REQUEST
+       EXIT.
+
+REJECT-REQUEST.
+       PERFORM REMOVE-PENDING-REQUEST
+       EXIT.
+
+NORMALIZE-PAIR.
+       *> Sort EC-U1 and EC-U2 lexicographically so (a,b) == (b,a)
+       IF FUNCTION LOWER-CASE(EC-U1) > FUNCTION LOWER-CASE(EC-U2)
+           MOVE EC-U1 TO W-TMP
+           MOVE EC-U2 TO EC-U1
+           MOVE W-TMP TO EC-U2
+       END-IF
+       EXIT.
+
+ENSURE-PAIR-IN-ECFILE.
+       MOVE 'N' TO EC-EXISTS
+       OPEN INPUT EC-FILE
+       PERFORM UNTIL 1 = 0
+           READ EC-FILE INTO EC-LINE
+               AT END EXIT PERFORM
+               NOT AT END
+                   MOVE FUNCTION TRIM(EC-LINE) TO EC-LINE
+                   IF EC-LINE NOT = SPACES
+                       UNSTRING EC-LINE DELIMITED BY ","
+                           INTO EC-U1, EC-U2
+                       END-UNSTRING
+                       PERFORM NORMALIZE-PAIR
+                       MOVE SPACES TO EC-PAIR
+                       STRING EC-U1 "," EC-U2 INTO EC-PAIR
+                       END-STRING
+                       IF FUNCTION TRIM(EC-PAIR) =
+                          FUNCTION TRIM(EC-LINE)
+                           MOVE 'Y' TO EC-EXISTS
+                       END-IF
+                   END-IF
+           END-READ
+       END-PERFORM
+       CLOSE EC-FILE
+
+       IF EC-EXISTS = 'N'
+           OPEN EXTEND EC-FILE
+           MOVE SPACES TO EC-REC
+           STRING EC-U1 "," EC-U2 INTO EC-REC
+           END-STRING
+           WRITE EC-REC
+           CLOSE EC-FILE
+       END-IF
+       EXIT.
+
+REMOVE-PENDING-REQUEST.
+       *> We will rebuild the CONNECTIONS: line without RQ-NAME
+       PERFORM GET-CONNECTIONS
+       PERFORM PARSE-CONNECTIONS
+
+       OPEN INPUT  P-FILE
+       OPEN OUTPUT P-TEMP-FILE
+
+       MOVE 'N' TO FILE-EOF
+       MOVE 'N' TO LINE-IS-TAG
+
+       PERFORM UNTIL FILE-EOF = 'Y'
+           READ P-FILE INTO P-REC
+               AT END
+                   MOVE 'Y' TO FILE-EOF
+               NOT AT END
+                   MOVE FUNCTION TRIM(P-REC) TO VIEW-LINE
+
+                   IF FUNCTION TRIM(VIEW-LINE(1:12)) = "CONNECTIONS:"
+                       MOVE "CONNECTIONS: " TO NEW-CONN-LINE
+                       MOVE 'N' TO ANY-WRITTEN
+                       PERFORM VARYING CONN-IDX FROM 1 BY 1
+                               UNTIL CONN-IDX > CONNECTIONS-COUNT
+                           IF FUNCTION TRIM(CONNECTIONS-ENTRY(CONN-IDX))
+                              NOT = FUNCTION TRIM(RQ-NAME)
+                               IF ANY-WRITTEN = 'Y'
+                                   STRING FUNCTION TRIM(NEW-CONN-LINE) ","
+                                      INTO NEW-CONN-LINE
+                                   END-STRING
+                               END-IF
+                               STRING FUNCTION TRIM(NEW-CONN-LINE)
+                                      FUNCTION TRIM(CONNECTIONS-ENTRY(CONN-IDX))
+                                      INTO NEW-CONN-LINE
+                               END-STRING
+                               MOVE 'Y' TO ANY-WRITTEN
+                           END-IF
+                       END-PERFORM
+                       WRITE P-TEMP-REC FROM NEW-CONN-LINE
+                   ELSE
+                       WRITE P-TEMP-REC FROM P-REC
+                   END-IF
+           END-READ
+       END-PERFORM
+
+       CLOSE P-FILE
+       CLOSE P-TEMP-FILE
+
+       STRING "mv bin/profiles/te-mp.txt " W-PROFILE-PATH INTO W-TMP
+       END-STRING
+       CALL "SYSTEM" USING W-TMP
+       EXIT.
+
+VIEW-NETWORK.
+       MOVE "--------------------"  TO W-MSG PERFORM DISP-MSG
+       MOVE "--- Your Network ---"  TO W-MSG PERFORM DISP-MSG
+
+       OPEN INPUT EC-FILE
+       MOVE 0 TO EC-COUNT
+
+       PERFORM UNTIL 1 = 0
+           READ EC-FILE INTO EC-LINE
+               AT END EXIT PERFORM
+               NOT AT END
+                   MOVE FUNCTION TRIM(EC-LINE) TO EC-LINE
+                   IF EC-LINE NOT = SPACES
+                       UNSTRING EC-LINE DELIMITED BY ","
+                           INTO EC-U1, EC-U2
+                       END-UNSTRING
+
+                       IF FUNCTION TRIM(EC-U1) = FUNCTION TRIM(W-USERNAME)
+                           MOVE EC-U2 TO EC-OTHER
+                           PERFORM PRINT-OTHER-SUMMARY
+                           ADD 1 TO EC-COUNT
+                       ELSE
+                           IF FUNCTION TRIM(EC-U2) = FUNCTION TRIM(W-USERNAME)
+                               MOVE EC-U1 TO EC-OTHER
+                               PERFORM PRINT-OTHER-SUMMARY
+                               ADD 1 TO EC-COUNT
+                           END-IF
+                       END-IF
+                   END-IF
+           END-READ
+       END-PERFORM
+       CLOSE EC-FILE
+
+       IF EC-COUNT = 0
+           MOVE "(none)" TO W-MSG PERFORM DISP-MSG
+       END-IF
+
+       MOVE "--------------------" TO W-MSG PERFORM DISP-MSG
+       EXIT.
+
+PRINT-OTHER-SUMMARY.
+       *> Save current parsed profile fields (we’ll reuse the same WS)
+       MOVE FIRST-NAME  TO SAVE-FIRST
+       MOVE LAST-NAME   TO SAVE-LAST
+       MOVE UNIVERSITY  TO SAVE-UNIV
+       MOVE MAJOR       TO SAVE-MAJOR
+       MOVE W-YEAR-TEXT-VIEW TO SAVE-YEAR
+
+       *> Open other user’s profile and parse to get University/Major
+       MOVE SPACES TO OTHER-PATH
+       STRING "bin/profiles/" FUNCTION LOWER-CASE(EC-OTHER) ".txt"
+          INTO OTHER-PATH
+       END-STRING
+
+       MOVE OTHER-PATH TO W-PROFILE-PATH
+       OPEN INPUT P-FILE
+       IF P-STAT = "00"
+           PERFORM CLEAR-PROFILE-WS
+           PERFORM PARSE-PROFILE-FILE
+           CLOSE P-FILE
+
+           MOVE SPACES TO W-MSG
+           STRING "Connected with: "
+                  EC-OTHER
+                  " (University: "
+                  FUNCTION TRIM(UNIVERSITY)
+                  ", Major: "
+                  FUNCTION TRIM(MAJOR)
+                  ")"
+              INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
+       ELSE
+           CLOSE P-FILE
+           MOVE SPACES TO W-MSG
+           STRING "Connected with: " EC-OTHER INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
+       END-IF
+
+       *> Restore saved fields (keeps your current user’s profile intact)
+       MOVE SAVE-FIRST TO FIRST-NAME
+       MOVE SAVE-LAST  TO LAST-NAME
+       MOVE SAVE-UNIV  TO UNIVERSITY
+       MOVE SAVE-MAJOR TO MAJOR
+       MOVE SAVE-YEAR  TO W-YEAR-TEXT-VIEW
        EXIT.
