@@ -23,6 +23,9 @@ FILE-CONTROL.
        SELECT EC-FILE ASSIGN TO "bin/established-connections.txt"
            ORGANIZATION IS LINE SEQUENTIAL.
 
+       SELECT JOB-FILE ASSIGN TO "bin/InCollege_jobListings.txt"
+           ORGANIZATION IS LINE SEQUENTIAL
+           FILE STATUS IS JOB-STAT.
 
 
 DATA DIVISION.
@@ -50,6 +53,9 @@ FD P-TEMP-FILE
 
 FD EC-FILE.
 01 EC-REC PIC X(120).
+
+FD JOB-FILE.
+01 JOB-REC PIC X(512).
 
 
 
@@ -117,6 +123,7 @@ WORKING-STORAGE SECTION.
 *> Profile paths and status
 01 W-PROFILE-PATH   PIC X(256).
 01 P-STAT           PIC XX.
+01 JOB-STAT         PIC XX.
 01 W-USER-LOW       PIC X(32).
 
 *> User profile fields
@@ -219,6 +226,18 @@ WORKING-STORAGE SECTION.
 01 SAVE-MAJOR     PIC X(40).
 01 SAVE-YEAR      PIC X(4).
 
+*> Job posting storage
+01 JOB-COUNT        PIC 9(4) COMP VALUE 0.
+01 JOB-NEXT-ID      PIC 9(4) COMP VALUE 0.
+01 JOB-ID-TEXT      PIC Z(5).
+01 JOB-TITLE        PIC X(100).
+01 JOB-DESCRIPTION  PIC X(200).
+01 JOB-EMPLOYER     PIC X(100).
+01 JOB-LOCATION     PIC X(100).
+01 JOB-SALARY       PIC X(60).
+01 JOB-LINE         PIC X(512).
+01 JOB-EOF          PIC X VALUE 'N'.
+
 
 PROCEDURE DIVISION.
 MAIN-SECTION.
@@ -294,6 +313,7 @@ POST-LOGIN-NAVIGATION-W5.
        MOVE "3. Learn a New Skill"                   TO W-MSG PERFORM DISP-MSG
        MOVE "4. View My Pending Connection Requests" TO W-MSG PERFORM DISP-MSG
        MOVE "5. View My Network"                     TO W-MSG PERFORM DISP-MSG
+       MOVE "6. Job search/internship"               TO W-MSG PERFORM DISP-MSG
        MOVE "Enter your choice:"                     TO W-MSG PERFORM DISP-MSG
        PERFORM READ-INPUT
 
@@ -313,10 +333,165 @@ POST-LOGIN-NAVIGATION-W5.
            WHEN "5"
                PERFORM VIEW-NETWORK
                PERFORM POST-LOGIN-NAVIGATION-W5
+           WHEN "6"
+               PERFORM JOB-SEARCH-MENU
+               PERFORM POST-LOGIN-NAVIGATION-W5
            WHEN OTHER
                MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
                PERFORM POST-LOGIN-NAVIGATION-W5
        END-EVALUATE
+       EXIT.
+
+POST-LOGIN-NAVIGATION.
+       PERFORM POST-LOGIN-NAVIGATION-W5
+       EXIT.
+
+JOB-SEARCH-MENU.
+       MOVE "--- Job Search/Internship Menu ---" TO W-MSG PERFORM DISP-MSG
+       MOVE "1. Post a Job/Internship"           TO W-MSG PERFORM DISP-MSG
+       MOVE "2. Browse Jobs/Internships"         TO W-MSG PERFORM DISP-MSG
+       MOVE "3. Back to Main Menu"               TO W-MSG PERFORM DISP-MSG
+       MOVE "Enter your choice:"                 TO W-MSG PERFORM DISP-MSG
+       PERFORM READ-INPUT
+
+       EVALUATE W-USR-INPT
+           WHEN "1"
+               PERFORM POST-JOB
+               PERFORM JOB-SEARCH-MENU
+           WHEN "2"
+               MOVE "Browse Jobs/Internships is under construction." TO W-MSG PERFORM DISP-MSG
+               PERFORM JOB-SEARCH-MENU
+           WHEN "3"
+               EXIT PARAGRAPH
+           WHEN OTHER
+               MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
+               PERFORM JOB-SEARCH-MENU
+       END-EVALUATE
+       EXIT.
+
+POST-JOB.
+       PERFORM ENSURE-JOB-FILE
+       IF JOB-STAT NOT = "00"
+           MOVE "Unable to access job postings. Please try again later." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       MOVE SPACES TO JOB-TITLE JOB-DESCRIPTION JOB-EMPLOYER JOB-LOCATION JOB-SALARY
+
+       MOVE "--- Post a New Job/Internship ---" TO W-MSG PERFORM DISP-MSG
+
+       MOVE SPACES TO W-USR-INPT
+       PERFORM UNTIL FUNCTION TRIM(W-USR-INPT) NOT = SPACES
+           MOVE "Enter Job Title:" TO W-MSG PERFORM DISP-MSG
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION TRIM(W-USR-INPT) = SPACES
+               MOVE "Job title is required. Please try again." TO W-MSG PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
+       MOVE FUNCTION TRIM(W-USR-INPT) TO JOB-TITLE
+
+       MOVE SPACES TO W-USR-INPT
+       PERFORM UNTIL FUNCTION TRIM(W-USR-INPT) NOT = SPACES
+           MOVE "Enter Description (max 200 chars):" TO W-MSG PERFORM DISP-MSG
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION TRIM(W-USR-INPT) = SPACES
+               MOVE "Job description is required. Please try again." TO W-MSG PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
+       MOVE FUNCTION TRIM(W-USR-INPT) TO JOB-DESCRIPTION
+
+       MOVE SPACES TO W-USR-INPT
+       PERFORM UNTIL FUNCTION TRIM(W-USR-INPT) NOT = SPACES
+           MOVE "Enter Employer Name:" TO W-MSG PERFORM DISP-MSG
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION TRIM(W-USR-INPT) = SPACES
+               MOVE "Employer name is required. Please try again." TO W-MSG PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
+       MOVE FUNCTION TRIM(W-USR-INPT) TO JOB-EMPLOYER
+
+       MOVE SPACES TO W-USR-INPT
+       PERFORM UNTIL FUNCTION TRIM(W-USR-INPT) NOT = SPACES
+           MOVE "Enter Location:" TO W-MSG PERFORM DISP-MSG
+           PERFORM READ-INPUT-RAW
+           IF FUNCTION TRIM(W-USR-INPT) = SPACES
+               MOVE "Job location is required. Please try again." TO W-MSG PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
+       MOVE FUNCTION TRIM(W-USR-INPT) TO JOB-LOCATION
+
+       MOVE "Enter Salary (optional, enter 'NONE' to skip):" TO W-MSG PERFORM DISP-MSG
+       PERFORM READ-INPUT-RAW
+       IF FUNCTION TRIM(W-USR-INPT) = SPACES
+           MOVE "Not provided" TO JOB-SALARY
+       ELSE
+           IF FUNCTION UPPER-CASE(FUNCTION TRIM(W-USR-INPT)) = "NONE"
+               MOVE "Not provided" TO JOB-SALARY
+           ELSE
+               MOVE FUNCTION TRIM(W-USR-INPT) TO JOB-SALARY
+           END-IF
+       END-IF
+
+       MOVE JOB-NEXT-ID TO JOB-ID-TEXT
+       MOVE SPACES TO JOB-LINE
+       STRING FUNCTION TRIM(JOB-ID-TEXT) DELIMITED BY SIZE
+              "|"                          DELIMITED BY SIZE
+              FUNCTION TRIM(JOB-TITLE)     DELIMITED BY SIZE
+              "|"                          DELIMITED BY SIZE
+              FUNCTION TRIM(JOB-DESCRIPTION) DELIMITED BY SIZE
+              "|"                          DELIMITED BY SIZE
+              FUNCTION TRIM(JOB-EMPLOYER)  DELIMITED BY SIZE
+              "|"                          DELIMITED BY SIZE
+              FUNCTION TRIM(JOB-LOCATION)  DELIMITED BY SIZE
+              "|"                          DELIMITED BY SIZE
+              FUNCTION TRIM(JOB-SALARY)    DELIMITED BY SIZE
+              "|"                          DELIMITED BY SIZE
+              FUNCTION TRIM(W-USERNAME)    DELIMITED BY SIZE
+          INTO JOB-LINE
+       END-STRING
+
+       OPEN EXTEND JOB-FILE
+       IF JOB-STAT NOT = "00"
+           MOVE "Unable to save job posting. Please try again later." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       MOVE JOB-LINE TO JOB-REC
+       WRITE JOB-REC
+       CLOSE JOB-FILE
+
+       MOVE "Job posted successfully!" TO W-MSG PERFORM DISP-MSG
+       MOVE "----------------------------------" TO W-MSG PERFORM DISP-MSG
+       EXIT.
+
+ENSURE-JOB-FILE.
+       MOVE 0 TO JOB-COUNT JOB-NEXT-ID
+       MOVE 'N' TO JOB-EOF
+
+       OPEN INPUT JOB-FILE
+       IF JOB-STAT = "00"
+           PERFORM UNTIL JOB-EOF = 'Y'
+               READ JOB-FILE INTO JOB-REC
+                   AT END
+                       MOVE 'Y' TO JOB-EOF
+                   NOT AT END
+                       ADD 1 TO JOB-COUNT
+               END-READ
+           END-PERFORM
+           CLOSE JOB-FILE
+       ELSE
+           IF JOB-STAT = "35"
+               OPEN OUTPUT JOB-FILE
+               IF JOB-STAT = "00"
+                   CLOSE JOB-FILE
+               END-IF
+           END-IF
+       END-IF
+
+       MOVE JOB-COUNT TO JOB-NEXT-ID
+       ADD 1 TO JOB-NEXT-ID
        EXIT.
 
 
