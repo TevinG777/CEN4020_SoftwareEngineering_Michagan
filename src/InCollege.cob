@@ -237,6 +237,7 @@ WORKING-STORAGE SECTION.
 01 JOB-SALARY       PIC X(60).
 01 JOB-LINE         PIC X(512).
 01 JOB-EOF          PIC X VALUE 'N'.
+01 JOB-PIPE-COUNT   PIC 9(4) COMP.
 
 
 PROCEDURE DIVISION.
@@ -385,8 +386,17 @@ POST-JOB.
        PERFORM UNTIL FUNCTION TRIM(W-USR-INPT) NOT = SPACES
            MOVE "Enter Job Title:" TO W-MSG PERFORM DISP-MSG
            PERFORM READ-INPUT-RAW
-           IF FUNCTION TRIM(W-USR-INPT) = SPACES
-               MOVE "Job title is required. Please try again." TO W-MSG PERFORM DISP-MSG
+           MOVE FUNCTION TRIM(W-USR-INPT) TO W-TMP
+           MOVE 0 TO JOB-PIPE-COUNT
+           INSPECT W-TMP TALLYING JOB-PIPE-COUNT FOR ALL "|"
+           IF JOB-PIPE-COUNT > 0
+               MOVE "The '|' character is not allowed. Please try again." TO W-MSG
+               PERFORM DISP-MSG
+               MOVE SPACES TO W-USR-INPT
+           ELSE
+               IF FUNCTION TRIM(W-USR-INPT) = SPACES
+                   MOVE "Job title is required. Please try again." TO W-MSG PERFORM DISP-MSG
+               END-IF
            END-IF
        END-PERFORM
        MOVE FUNCTION TRIM(W-USR-INPT) TO JOB-TITLE
@@ -395,8 +405,17 @@ POST-JOB.
        PERFORM UNTIL FUNCTION TRIM(W-USR-INPT) NOT = SPACES
            MOVE "Enter Description (max 200 chars):" TO W-MSG PERFORM DISP-MSG
            PERFORM READ-INPUT-RAW
-           IF FUNCTION TRIM(W-USR-INPT) = SPACES
-               MOVE "Job description is required. Please try again." TO W-MSG PERFORM DISP-MSG
+           MOVE FUNCTION TRIM(W-USR-INPT) TO W-TMP
+           MOVE 0 TO JOB-PIPE-COUNT
+           INSPECT W-TMP TALLYING JOB-PIPE-COUNT FOR ALL "|"
+           IF JOB-PIPE-COUNT > 0
+               MOVE "The '|' character is not allowed. Please try again." TO W-MSG
+               PERFORM DISP-MSG
+               MOVE SPACES TO W-USR-INPT
+           ELSE
+               IF FUNCTION TRIM(W-USR-INPT) = SPACES
+                   MOVE "Job description is required. Please try again." TO W-MSG PERFORM DISP-MSG
+               END-IF
            END-IF
        END-PERFORM
        MOVE FUNCTION TRIM(W-USR-INPT) TO JOB-DESCRIPTION
@@ -405,8 +424,17 @@ POST-JOB.
        PERFORM UNTIL FUNCTION TRIM(W-USR-INPT) NOT = SPACES
            MOVE "Enter Employer Name:" TO W-MSG PERFORM DISP-MSG
            PERFORM READ-INPUT-RAW
-           IF FUNCTION TRIM(W-USR-INPT) = SPACES
-               MOVE "Employer name is required. Please try again." TO W-MSG PERFORM DISP-MSG
+           MOVE FUNCTION TRIM(W-USR-INPT) TO W-TMP
+           MOVE 0 TO JOB-PIPE-COUNT
+           INSPECT W-TMP TALLYING JOB-PIPE-COUNT FOR ALL "|"
+           IF JOB-PIPE-COUNT > 0
+               MOVE "The '|' character is not allowed. Please try again." TO W-MSG
+               PERFORM DISP-MSG
+               MOVE SPACES TO W-USR-INPT
+           ELSE
+               IF FUNCTION TRIM(W-USR-INPT) = SPACES
+                   MOVE "Employer name is required. Please try again." TO W-MSG PERFORM DISP-MSG
+               END-IF
            END-IF
        END-PERFORM
        MOVE FUNCTION TRIM(W-USR-INPT) TO JOB-EMPLOYER
@@ -415,14 +443,33 @@ POST-JOB.
        PERFORM UNTIL FUNCTION TRIM(W-USR-INPT) NOT = SPACES
            MOVE "Enter Location:" TO W-MSG PERFORM DISP-MSG
            PERFORM READ-INPUT-RAW
-           IF FUNCTION TRIM(W-USR-INPT) = SPACES
-               MOVE "Job location is required. Please try again." TO W-MSG PERFORM DISP-MSG
+           MOVE FUNCTION TRIM(W-USR-INPT) TO W-TMP
+           MOVE 0 TO JOB-PIPE-COUNT
+           INSPECT W-TMP TALLYING JOB-PIPE-COUNT FOR ALL "|"
+           IF JOB-PIPE-COUNT > 0
+               MOVE "The '|' character is not allowed. Please try again." TO W-MSG
+               PERFORM DISP-MSG
+               MOVE SPACES TO W-USR-INPT
+           ELSE
+               IF FUNCTION TRIM(W-USR-INPT) = SPACES
+                   MOVE "Job location is required. Please try again." TO W-MSG PERFORM DISP-MSG
+               END-IF
            END-IF
        END-PERFORM
        MOVE FUNCTION TRIM(W-USR-INPT) TO JOB-LOCATION
 
-       MOVE "Enter Salary (optional, enter 'NONE' to skip):" TO W-MSG PERFORM DISP-MSG
-       PERFORM READ-INPUT-RAW
+       MOVE 1 TO JOB-PIPE-COUNT
+       PERFORM UNTIL JOB-PIPE-COUNT = 0
+           MOVE "Enter Salary (optional, enter 'NONE' to skip):" TO W-MSG PERFORM DISP-MSG
+           PERFORM READ-INPUT-RAW
+           MOVE FUNCTION TRIM(W-USR-INPT) TO W-TMP
+           MOVE 0 TO JOB-PIPE-COUNT
+           INSPECT W-TMP TALLYING JOB-PIPE-COUNT FOR ALL "|"
+           IF JOB-PIPE-COUNT > 0
+               MOVE "The '|' character is not allowed. Please try again." TO W-MSG
+               PERFORM DISP-MSG
+           END-IF
+       END-PERFORM
        IF FUNCTION TRIM(W-USR-INPT) = SPACES
            MOVE "Not provided" TO JOB-SALARY
        ELSE
