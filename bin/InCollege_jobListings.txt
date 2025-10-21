@@ -2,3 +2,4 @@
 2|Data Analyst|Analyze student usage metrics.|InCollege Insights|Remote|Not provided|Tevin
 3|Software Engineer I|Build core features for students.|InCollege Corp|Tampa, FL|85000|Tevin
 4|UX Research Intern|Interview students about app usability.|InCollege Labs|Gainesville, FL|Not provided|Tevin
+5|Software Engineer I|Build core features for students.|InCollege Corp|Tampa, FL|85000|Tevin

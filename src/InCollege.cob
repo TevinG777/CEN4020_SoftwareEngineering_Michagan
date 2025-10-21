@@ -31,7 +31,7 @@ FILE-CONTROL.
 DATA DIVISION.
 FILE SECTION.
 FD I-FILE.
-01 I-REC   PIC X(100).  *> Each line is up to 100 chars
+01 I-REC   PIC X(256).  *> Raised to support 200-char inputs
 
 FD O-FILE.
 01 O-REC   PIC X(100).
@@ -63,10 +63,10 @@ FD JOB-FILE.
 
 WORKING-STORAGE SECTION.
 01 W-MSG   PIC X(100).
-01 W-TMP   PIC X(100).
-01 W-RAW   PIC X(100).
-01 W-CLEAN PIC X(100).
-01 W-USR-INPT PIC X(100).
+01 W-TMP   PIC X(256).
+01 W-RAW   PIC X(256).
+01 W-CLEAN PIC X(256).
+01 W-USR-INPT PIC X(256).
 01 W-USERNAME PIC X(100).
 01 W-PASSWORD PIC X(250).
 
@@ -79,8 +79,8 @@ WORKING-STORAGE SECTION.
 
 01 W-PASS-CANDIDATE PIC X(100). *> Temp storage for password validation
 *> Loop counters with storage from 00-99 and stored as binary for fast computations
-01 i         pic 9(2) comp.
-01 j         pic 9(2) comp.
+01 i         PIC 9(4) COMP.
+01 j         PIC 9(4) COMP.
 
 *> Bool flag to see if user creation was successful
 01 CREATED-FLAG        PIC X VALUE "N".
