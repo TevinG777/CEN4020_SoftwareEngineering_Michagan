@@ -26,6 +26,9 @@ FILE-CONTROL.
        SELECT JOB-FILE ASSIGN TO "bin/InCollege_jobListings.txt"
            ORGANIZATION IS LINE SEQUENTIAL
            FILE STATUS IS JOB-STAT.
+       SELECT APP-FILE ASSIGN TO "bin/InCollege_jobApplications.txt"
+           ORGANIZATION IS LINE SEQUENTIAL
+           FILE STATUS IS APP-STAT.
 
 
 DATA DIVISION.
@@ -60,6 +63,9 @@ FD JOB-FILE.
 
 
 
+
+FD APP-FILE.
+01 APP-REC PIC X(512).
 
 WORKING-STORAGE SECTION.
 01 W-MSG   PIC X(100).
@@ -239,6 +245,42 @@ WORKING-STORAGE SECTION.
 01 JOB-EOF          PIC X VALUE 'N'.
 01 JOB-PIPE-COUNT   PIC 9(4) COMP.
 
+01 MAX-JOB-ENTRIES  PIC 9(4) COMP VALUE 100.
+01 JOB-LIST.
+       05 JOB-INFO OCCURS 100 TIMES.
+          10 JOB-INFO-ID        PIC X(5).
+          10 JOB-INFO-TITLE     PIC X(100).
+          10 JOB-INFO-DESC      PIC X(200).
+          10 JOB-INFO-EMPLOYER  PIC X(100).
+          10 JOB-INFO-LOCATION  PIC X(100).
+          10 JOB-INFO-SALARY    PIC X(60).
+          10 JOB-INFO-POSTER    PIC X(100).
+01 JOB-SUB         PIC 9(4) COMP.
+01 JOB-SELECTION   PIC 9(4) COMP.
+01 CURRENT-JOB-SUB PIC 9(4) COMP.
+01 JOB-NUM-TEXT    PIC Z(3).
+01 JOB-LIST-FLAG   PIC X VALUE 'N'.
+   88 JOB-LIST-DONE   VALUE 'Y'.
+   88 JOB-LIST-ACTIVE VALUE 'N'.
+01 JOB-LOAD-FLAG   PIC X VALUE 'Y'.
+   88 JOB-LOAD-SUCCESS VALUE 'Y'.
+   88 JOB-LOAD-FAILED  VALUE 'N'.
+01 JOB-POINTER     PIC 9(4) COMP.
+
+01 APP-STAT         PIC XX.
+01 APP-LINE         PIC X(512).
+01 APP-EOF          PIC X VALUE 'N'.
+01 APP-POINTER      PIC 9(4) COMP.
+01 APP-USER-FIELD   PIC X(100).
+01 APP-JOB-ID-FIELD PIC X(5).
+01 APP-TITLE-FIELD  PIC X(100).
+01 APP-EMP-FIELD    PIC X(100).
+01 APP-LOC-FIELD    PIC X(100).
+01 APP-REPORT-COUNT PIC 9(4) COMP VALUE 0.
+01 APP-ALREADY      PIC X VALUE 'N'.
+   88 APP-ALREADY-YES VALUE 'Y'.
+   88 APP-ALREADY-NO  VALUE 'N'.
+
 
 PROCEDURE DIVISION.
 MAIN-SECTION.
@@ -351,7 +393,8 @@ JOB-SEARCH-MENU.
        MOVE "--- Job Search/Internship Menu ---" TO W-MSG PERFORM DISP-MSG
        MOVE "1. Post a Job/Internship"           TO W-MSG PERFORM DISP-MSG
        MOVE "2. Browse Jobs/Internships"         TO W-MSG PERFORM DISP-MSG
-       MOVE "3. Back to Main Menu"               TO W-MSG PERFORM DISP-MSG
+       MOVE "3. View My Applications"            TO W-MSG PERFORM DISP-MSG
+       MOVE "4. Back to Main Menu"               TO W-MSG PERFORM DISP-MSG
        MOVE "Enter your choice:"                 TO W-MSG PERFORM DISP-MSG
        PERFORM READ-INPUT
 
@@ -360,9 +403,12 @@ JOB-SEARCH-MENU.
                PERFORM POST-JOB
                PERFORM JOB-SEARCH-MENU
            WHEN "2"
-               MOVE "Browse Jobs/Internships is under construction." TO W-MSG PERFORM DISP-MSG
+               PERFORM BROWSE-JOBS
                PERFORM JOB-SEARCH-MENU
            WHEN "3"
+               PERFORM VIEW-MY-APPLICATIONS
+               PERFORM JOB-SEARCH-MENU
+           WHEN "4"
                EXIT PARAGRAPH
            WHEN OTHER
                MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
@@ -542,6 +588,390 @@ ENSURE-JOB-FILE.
        EXIT.
 
 
+
+ENSURE-APP-FILE.
+       MOVE 'N' TO APP-EOF
+       OPEN INPUT APP-FILE
+       IF APP-STAT = "00"
+           CLOSE APP-FILE
+       ELSE
+           IF APP-STAT = "35"
+               OPEN OUTPUT APP-FILE
+               IF APP-STAT = "00"
+                   CLOSE APP-FILE
+               END-IF
+           END-IF
+       END-IF
+       EXIT.
+
+LOAD-JOB-LIST.
+       PERFORM ENSURE-JOB-FILE
+       MOVE SPACES TO JOB-LIST
+       MOVE 0 TO JOB-COUNT
+       MOVE 'Y' TO JOB-LOAD-FLAG
+       MOVE 'N' TO JOB-EOF
+
+       OPEN INPUT JOB-FILE
+       IF JOB-STAT NOT = "00"
+           MOVE "Unable to load job listings right now. Please try again later." TO W-MSG
+           PERFORM DISP-MSG
+           MOVE 'N' TO JOB-LOAD-FLAG
+           EXIT PARAGRAPH
+       END-IF
+
+       PERFORM UNTIL JOB-EOF = 'Y'
+           READ JOB-FILE INTO JOB-REC
+               AT END
+                   MOVE 'Y' TO JOB-EOF
+               NOT AT END
+                   MOVE FUNCTION TRIM(JOB-REC) TO JOB-LINE
+                   IF JOB-LINE NOT = SPACES
+                       IF JOB-COUNT < MAX-JOB-ENTRIES
+                           ADD 1 TO JOB-COUNT
+                           MOVE JOB-COUNT TO JOB-SUB
+                           PERFORM PARSE-JOB-LINE
+                       END-IF
+                   END-IF
+           END-READ
+       END-PERFORM
+       CLOSE JOB-FILE
+       EXIT.
+
+PARSE-JOB-LINE.
+       MOVE 1 TO JOB-POINTER
+       MOVE SPACES TO JOB-INFO-ID(JOB-SUB)
+       MOVE SPACES TO JOB-INFO-TITLE(JOB-SUB)
+       MOVE SPACES TO JOB-INFO-DESC(JOB-SUB)
+       MOVE SPACES TO JOB-INFO-EMPLOYER(JOB-SUB)
+       MOVE SPACES TO JOB-INFO-LOCATION(JOB-SUB)
+       MOVE SPACES TO JOB-INFO-SALARY(JOB-SUB)
+       MOVE SPACES TO JOB-INFO-POSTER(JOB-SUB)
+
+       UNSTRING JOB-LINE DELIMITED BY "|"
+           INTO JOB-INFO-ID(JOB-SUB)
+                JOB-INFO-TITLE(JOB-SUB)
+                JOB-INFO-DESC(JOB-SUB)
+                JOB-INFO-EMPLOYER(JOB-SUB)
+                JOB-INFO-LOCATION(JOB-SUB)
+                JOB-INFO-SALARY(JOB-SUB)
+                JOB-INFO-POSTER(JOB-SUB)
+           WITH POINTER JOB-POINTER
+       END-UNSTRING
+
+       MOVE FUNCTION TRIM(JOB-INFO-ID(JOB-SUB))       TO JOB-INFO-ID(JOB-SUB)
+       MOVE FUNCTION TRIM(JOB-INFO-TITLE(JOB-SUB))    TO JOB-INFO-TITLE(JOB-SUB)
+       MOVE FUNCTION TRIM(JOB-INFO-DESC(JOB-SUB))     TO JOB-INFO-DESC(JOB-SUB)
+       MOVE FUNCTION TRIM(JOB-INFO-EMPLOYER(JOB-SUB)) TO JOB-INFO-EMPLOYER(JOB-SUB)
+       MOVE FUNCTION TRIM(JOB-INFO-LOCATION(JOB-SUB)) TO JOB-INFO-LOCATION(JOB-SUB)
+       MOVE FUNCTION TRIM(JOB-INFO-SALARY(JOB-SUB))   TO JOB-INFO-SALARY(JOB-SUB)
+       MOVE FUNCTION TRIM(JOB-INFO-POSTER(JOB-SUB))   TO JOB-INFO-POSTER(JOB-SUB)
+       EXIT.
+
+DISPLAY-JOB-SUMMARY.
+       MOVE "--- Available Job Listings ---" TO W-MSG PERFORM DISP-MSG
+       PERFORM VARYING JOB-SUB FROM 1 BY 1 UNTIL JOB-SUB > JOB-COUNT
+           MOVE JOB-SUB TO JOB-NUM-TEXT
+           MOVE SPACES TO W-MSG
+           STRING FUNCTION TRIM(JOB-NUM-TEXT) ". "
+                  FUNCTION TRIM(JOB-INFO-TITLE(JOB-SUB))     DELIMITED BY SIZE
+                  " at "                                    DELIMITED BY SIZE
+                  FUNCTION TRIM(JOB-INFO-EMPLOYER(JOB-SUB)) DELIMITED BY SIZE
+                  " ("                                      DELIMITED BY SIZE
+                  FUNCTION TRIM(JOB-INFO-LOCATION(JOB-SUB)) DELIMITED BY SIZE
+                  ")"                                       DELIMITED BY SIZE
+              INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
+       END-PERFORM
+       MOVE "-----------------------------" TO W-MSG PERFORM DISP-MSG
+       EXIT.
+
+BROWSE-JOBS.
+       PERFORM LOAD-JOB-LIST
+       IF JOB-LOAD-FAILED
+           EXIT PARAGRAPH
+       END-IF
+
+       IF JOB-COUNT = 0
+           MOVE "--- Available Job Listings ---" TO W-MSG PERFORM DISP-MSG
+           MOVE "No job listings are currently available." TO W-MSG PERFORM DISP-MSG
+           MOVE "-----------------------------" TO W-MSG PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       MOVE 'N' TO JOB-LIST-FLAG
+       PERFORM UNTIL JOB-LIST-DONE
+           PERFORM DISPLAY-JOB-SUMMARY
+           MOVE "Enter job number to view details, or 0 to go back:" TO W-MSG PERFORM DISP-MSG
+           PERFORM READ-INPUT
+
+           IF W-USR-INPT = "0"
+               MOVE 'Y' TO JOB-LIST-FLAG
+           ELSE
+               IF W-USR-INPT NUMERIC
+                   MOVE FUNCTION NUMVAL(W-USR-INPT) TO JOB-SELECTION
+                   IF JOB-SELECTION >= 1 AND JOB-SELECTION <= JOB-COUNT
+                       MOVE JOB-SELECTION TO CURRENT-JOB-SUB
+                       PERFORM SHOW-JOB-DETAILS
+                   ELSE
+                       MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
+                   END-IF
+               ELSE
+                   MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
+               END-IF
+           END-IF
+       END-PERFORM
+       EXIT.
+
+SHOW-JOB-DETAILS.
+       IF CURRENT-JOB-SUB < 1 OR CURRENT-JOB-SUB > JOB-COUNT
+           EXIT PARAGRAPH
+       END-IF
+
+       PERFORM UNTIL 1 = 0
+           MOVE "--- Job Details ---" TO W-MSG PERFORM DISP-MSG
+
+           MOVE SPACES TO W-MSG
+           STRING "Title: " DELIMITED BY SIZE
+                  FUNCTION TRIM(JOB-INFO-TITLE(CURRENT-JOB-SUB)) DELIMITED BY SIZE
+              INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
+
+           MOVE SPACES TO W-MSG
+           STRING "Description: " DELIMITED BY SIZE
+                  FUNCTION TRIM(JOB-INFO-DESC(CURRENT-JOB-SUB)) DELIMITED BY SIZE
+              INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
+
+           MOVE SPACES TO W-MSG
+           STRING "Employer: " DELIMITED BY SIZE
+                  FUNCTION TRIM(JOB-INFO-EMPLOYER(CURRENT-JOB-SUB)) DELIMITED BY SIZE
+              INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
+
+           MOVE SPACES TO W-MSG
+           STRING "Location: " DELIMITED BY SIZE
+                  FUNCTION TRIM(JOB-INFO-LOCATION(CURRENT-JOB-SUB)) DELIMITED BY SIZE
+              INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
+
+           MOVE SPACES TO W-MSG
+           STRING "Salary: " DELIMITED BY SIZE
+                  FUNCTION TRIM(JOB-INFO-SALARY(CURRENT-JOB-SUB)) DELIMITED BY SIZE
+              INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
+
+           MOVE "-------------------" TO W-MSG PERFORM DISP-MSG
+           MOVE "1. Apply for this Job" TO W-MSG PERFORM DISP-MSG
+           MOVE "2. Back to Job List"   TO W-MSG PERFORM DISP-MSG
+           MOVE "Enter your choice:"    TO W-MSG PERFORM DISP-MSG
+           PERFORM READ-INPUT
+
+           EVALUATE W-USR-INPT
+               WHEN "1"
+                   PERFORM APPLY-TO-JOB
+                   EXIT PARAGRAPH
+               WHEN "2"
+                   EXIT PARAGRAPH
+               WHEN OTHER
+                   MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
+           END-EVALUATE
+       END-PERFORM
+       EXIT.
+
+APPLY-TO-JOB.
+       PERFORM ENSURE-APP-FILE
+       IF APP-STAT NOT = "00"
+           MOVE "Unable to record job applications at this time. Please try again later." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       MOVE 'N' TO APP-ALREADY
+       MOVE 'N' TO APP-EOF
+
+       OPEN INPUT APP-FILE
+       IF APP-STAT = "00"
+           PERFORM UNTIL APP-EOF = 'Y'
+               READ APP-FILE INTO APP-REC
+                   AT END
+                       MOVE 'Y' TO APP-EOF
+                   NOT AT END
+                       MOVE FUNCTION TRIM(APP-REC) TO APP-LINE
+                       IF APP-LINE NOT = SPACES
+                           MOVE 1 TO APP-POINTER
+                           MOVE SPACES TO APP-USER-FIELD APP-JOB-ID-FIELD APP-TITLE-FIELD
+                           MOVE SPACES TO APP-EMP-FIELD APP-LOC-FIELD
+                           UNSTRING APP-LINE DELIMITED BY "|"
+                               INTO APP-USER-FIELD
+                                    APP-JOB-ID-FIELD
+                                    APP-TITLE-FIELD
+                                    APP-EMP-FIELD
+                                    APP-LOC-FIELD
+                               WITH POINTER APP-POINTER
+                           END-UNSTRING
+
+                           IF FUNCTION LOWER-CASE(FUNCTION TRIM(APP-USER-FIELD))
+                              = FUNCTION LOWER-CASE(FUNCTION TRIM(W-USERNAME))
+                              AND FUNCTION TRIM(APP-JOB-ID-FIELD)
+                              = FUNCTION TRIM(JOB-INFO-ID(CURRENT-JOB-SUB))
+                               SET APP-ALREADY-YES TO TRUE
+                               EXIT PERFORM
+                           END-IF
+                       END-IF
+               END-READ
+           END-PERFORM
+           CLOSE APP-FILE
+       ELSE
+           MOVE "Unable to read existing applications right now. Please try again later." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       IF APP-ALREADY-YES
+           MOVE SPACES TO W-MSG
+           STRING "You have already applied for "
+                  FUNCTION TRIM(JOB-INFO-TITLE(CURRENT-JOB-SUB))
+                  " at "
+                  FUNCTION TRIM(JOB-INFO-EMPLOYER(CURRENT-JOB-SUB))
+                  "." INTO W-MSG
+           END-STRING
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       OPEN EXTEND APP-FILE
+       IF APP-STAT NOT = "00"
+           MOVE "Unable to save your application. Please try again later." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       MOVE SPACES TO APP-LINE
+       STRING FUNCTION TRIM(W-USERNAME)                    DELIMITED BY SIZE
+              "|"                                          DELIMITED BY SIZE
+              FUNCTION TRIM(JOB-INFO-ID(CURRENT-JOB-SUB))  DELIMITED BY SIZE
+              "|"                                          DELIMITED BY SIZE
+              FUNCTION TRIM(JOB-INFO-TITLE(CURRENT-JOB-SUB)) DELIMITED BY SIZE
+              "|"                                          DELIMITED BY SIZE
+              FUNCTION TRIM(JOB-INFO-EMPLOYER(CURRENT-JOB-SUB)) DELIMITED BY SIZE
+              "|"                                          DELIMITED BY SIZE
+              FUNCTION TRIM(JOB-INFO-LOCATION(CURRENT-JOB-SUB)) DELIMITED BY SIZE
+           INTO APP-LINE
+       END-STRING
+
+       MOVE APP-LINE TO APP-REC
+       WRITE APP-REC
+       CLOSE APP-FILE
+
+       MOVE SPACES TO W-MSG
+       STRING "Your application for "
+              FUNCTION TRIM(JOB-INFO-TITLE(CURRENT-JOB-SUB))
+              " at "
+              FUNCTION TRIM(JOB-INFO-EMPLOYER(CURRENT-JOB-SUB))
+              " has been submitted."
+           INTO W-MSG
+       END-STRING
+       PERFORM DISP-MSG
+       EXIT.
+
+VIEW-MY-APPLICATIONS.
+       PERFORM ENSURE-APP-FILE
+       IF APP-STAT NOT = "00"
+           MOVE "Unable to access job applications right now. Please try again later." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       MOVE "--- Your Job Applications ---" TO W-MSG PERFORM DISP-MSG
+       MOVE SPACES TO W-MSG
+       STRING "Application Summary for "
+              FUNCTION TRIM(W-USERNAME)
+           INTO W-MSG
+       END-STRING
+       PERFORM DISP-MSG
+       MOVE "------------------------------" TO W-MSG PERFORM DISP-MSG
+
+       MOVE 0 TO APP-REPORT-COUNT
+       MOVE 'N' TO APP-EOF
+
+       OPEN INPUT APP-FILE
+       IF APP-STAT NOT = "00"
+           MOVE "Unable to read job applications right now. Please try again later." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       PERFORM UNTIL APP-EOF = 'Y'
+           READ APP-FILE INTO APP-REC
+               AT END
+                   MOVE 'Y' TO APP-EOF
+               NOT AT END
+                   MOVE FUNCTION TRIM(APP-REC) TO APP-LINE
+                   IF APP-LINE NOT = SPACES
+                       MOVE 1 TO APP-POINTER
+                       MOVE SPACES TO APP-USER-FIELD APP-JOB-ID-FIELD APP-TITLE-FIELD
+                       MOVE SPACES TO APP-EMP-FIELD APP-LOC-FIELD
+                       UNSTRING APP-LINE DELIMITED BY "|"
+                           INTO APP-USER-FIELD
+                                APP-JOB-ID-FIELD
+                                APP-TITLE-FIELD
+                                APP-EMP-FIELD
+                                APP-LOC-FIELD
+                           WITH POINTER APP-POINTER
+                       END-UNSTRING
+
+                       IF FUNCTION LOWER-CASE(FUNCTION TRIM(APP-USER-FIELD))
+                          = FUNCTION LOWER-CASE(FUNCTION TRIM(W-USERNAME))
+                           ADD 1 TO APP-REPORT-COUNT
+
+                           MOVE SPACES TO W-MSG
+                           STRING "Job Title: " DELIMITED BY SIZE
+                                  FUNCTION TRIM(APP-TITLE-FIELD) DELIMITED BY SIZE
+                               INTO W-MSG
+                           END-STRING
+                           PERFORM DISP-MSG
+
+                           MOVE SPACES TO W-MSG
+                           STRING "Employer: " DELIMITED BY SIZE
+                                  FUNCTION TRIM(APP-EMP-FIELD) DELIMITED BY SIZE
+                               INTO W-MSG
+                           END-STRING
+                           PERFORM DISP-MSG
+
+                           MOVE SPACES TO W-MSG
+                           STRING "Location: " DELIMITED BY SIZE
+                                  FUNCTION TRIM(APP-LOC-FIELD) DELIMITED BY SIZE
+                               INTO W-MSG
+                           END-STRING
+                           PERFORM DISP-MSG
+
+                           MOVE "---" TO W-MSG PERFORM DISP-MSG
+                       END-IF
+                   END-IF
+           END-READ
+       END-PERFORM
+       CLOSE APP-FILE
+
+       IF APP-REPORT-COUNT = 0
+           MOVE "You have not applied to any jobs yet." TO W-MSG PERFORM DISP-MSG
+       END-IF
+
+       MOVE "------------------------------" TO W-MSG PERFORM DISP-MSG
+       MOVE APP-REPORT-COUNT TO JOB-ID-TEXT
+       MOVE SPACES TO W-MSG
+       STRING "Total Applications: "
+              FUNCTION TRIM(JOB-ID-TEXT)
+           INTO W-MSG
+       END-STRING
+       PERFORM DISP-MSG
+       MOVE "------------------------------" TO W-MSG PERFORM DISP-MSG
+       EXIT.
 
 LEARN-SKILL.
        MOVE "Learn a New Skill - choose one from the list:" TO W-MSG

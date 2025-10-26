@@ -1,23 +1,33 @@
-# CEN4020 Software Engineering ‚Äî InCollege Project
+# CEN4020 Software Engineering ñ InCollege Project
 
 ## Overview
-- Purpose: Course project for CEN4020 to build a simplified, linkedIn clone called InCollege
-- Language/Stack: GNU COBOL (via devcontainer) with a simple console interface.
-- Requirements: See `epics/InCollege Software Req - Epic #1.pdf` for the initial scope.
+- Console-based LinkedIn-style prototype written in COBOL.
+- Supports account creation/login, profile management, networking, and a job board.
+- All program input is read from `bin/InCollege-Input.txt`; every message displayed on screen is also written to `bin/InCollege-Output.txt`.
 
 ## Development Environment
-- Devcontainer: Open the repo in VS Code and ‚ÄúReopen in Container‚Äù to get GNU COBOL and extensions preinstalled.
-- Auto-setup: The container creates `bin/` and `src/` on first start.
+- Recommended setup: VS Code devcontainer with GnuCOBOL.
+- Key directories:
+  - `src/` ñ COBOL source (`InCollege.cob`).
+  - `bin/` ñ compiled binary plus data files (input, output, users, jobs, applications).
+  - `epics/` ñ requirements and planning artifacts.
 
 ## Build & Run
-From inside the devcontainer (bash):
-- Compile: `cobc -x -o bin/app src/main.cob` or `ctrl + shift + b`
-- Run: `./bin/main`
+- Compile: `cobc -x -o bin/InCollege src/InCollege.cob`
+- Populate `bin/InCollege-Input.txt` with the scripted user choices.
+- Run the program from `bin/`: `./InCollege` (bash) or `.\InCollege` (PowerShell).
+- Review console output and the mirrored log in `bin/InCollege-Output.txt`.
 
-## Repository Structure
-- `.devcontainer/`: Devcontainer config for a consistent GNU COBOL setup.
-- `src/`: Source files (starter `main.cob`).
-- `bin/`: Compiled binaries.
-- `epics/`: Requirements and planning docs.
-- `.vscode/`: Editor settings.
+## Week 7 ñ Job Board Enhancements
+- Browse all posted jobs/internships with a numbered summary list.
+- Select a posting to view full details (title, description, employer, location, salary).
+- Simulate applying to a job; applications persist per user across runs.
+- View the "My Applications" report showing each applied position and total count.
 
+## Data Files
+- `bin/InCollege_jobListings.txt` ñ job postings in the format `id|title|description|employer|location|salary|poster`. Seed or edit this file to control what appears when browsing.
+- `bin/InCollege_jobApplications.txt` ñ created automatically; stores applications as `username|job-id|title|employer|location`. Delete or clear to reset the report for a user.
+
+## Sample Scenario
+- `bin/InCollege-Input.txt` logs in as a sample user, browses listings, applies to two jobs, and requests the applications report.
+- The expected console/output log for that flow is captured in `bin/InCollege-Output.txt`.
