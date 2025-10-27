@@ -266,6 +266,11 @@ WORKING-STORAGE SECTION.
    88 JOB-LOAD-SUCCESS VALUE 'Y'.
    88 JOB-LOAD-FAILED  VALUE 'N'.
 01 JOB-POINTER     PIC 9(4) COMP.
+01 JOB-INPUT-LEN   PIC 9(4) COMP.
+01 JOB-INPUT-CHAR  PIC X.
+01 JOB-INPUT-FLAG  PIC X VALUE 'Y'.
+   88 JOB-INPUT-OK   VALUE 'Y'.
+   88 JOB-INPUT-BAD  VALUE 'N'.
 
 01 APP-STAT         PIC XX.
 01 APP-LINE         PIC X(512).
@@ -708,16 +713,30 @@ BROWSE-JOBS.
            IF W-USR-INPT = "0"
                MOVE 'Y' TO JOB-LIST-FLAG
            ELSE
-               IF W-USR-INPT NUMERIC
-                   MOVE FUNCTION NUMVAL(W-USR-INPT) TO JOB-SELECTION
-                   IF JOB-SELECTION >= 1 AND JOB-SELECTION <= JOB-COUNT
-                       MOVE JOB-SELECTION TO CURRENT-JOB-SUB
-                       PERFORM SHOW-JOB-DETAILS
+               MOVE FUNCTION TRIM(W-USR-INPT) TO W-TMP
+               MOVE FUNCTION LENGTH(FUNCTION TRIM(W-USR-INPT)) TO JOB-INPUT-LEN
+               IF JOB-INPUT-LEN = 0
+                   MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
+               ELSE
+                   SET JOB-INPUT-OK TO TRUE
+                   PERFORM VARYING JOB-POINTER FROM 1 BY 1
+                       UNTIL JOB-POINTER > JOB-INPUT-LEN OR JOB-INPUT-BAD
+                       MOVE W-TMP(JOB-POINTER:1) TO JOB-INPUT-CHAR
+                       IF JOB-INPUT-CHAR < "0" OR JOB-INPUT-CHAR > "9"
+                           SET JOB-INPUT-BAD TO TRUE
+                       END-IF
+                   END-PERFORM
+                   IF JOB-INPUT-OK
+                       MOVE FUNCTION NUMVAL(W-TMP) TO JOB-SELECTION
+                       IF JOB-SELECTION >= 1 AND JOB-SELECTION <= JOB-COUNT
+                           MOVE JOB-SELECTION TO CURRENT-JOB-SUB
+                           PERFORM SHOW-JOB-DETAILS
+                       ELSE
+                           MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
+                       END-IF
                    ELSE
                        MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
                    END-IF
-               ELSE
-                   MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
                END-IF
            END-IF
        END-PERFORM
