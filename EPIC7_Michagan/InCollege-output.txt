@@ -6,7 +6,7 @@ Enter your choice:
 Please enter your username:
 Please enter your password:
 
-Welcome, Marko!
+Welcome, Tevin!
 1. View My Profile
 2. Search for User
 3. Learn a New Skill
@@ -21,11 +21,14 @@ Enter your choice:
 4. Back to Main Menu
 Enter your choice:
 --- Your Job Applications ---
-Application Summary for Marko
+Application Summary for Tevin
 ------------------------------
-You have not applied to any jobs yet.
+Job Title: Software Intern
+Employer: TechCorp
+Location: New York, NY
+---
 ------------------------------
-Total Applications:
+Total Applications: 1
 ------------------------------
 --- Job Search/Internship Menu ---
 1. Post a Job/Internship
