@@ -68,6 +68,12 @@ FD APP-FILE.
 01 APP-REC PIC X(512).
 
 WORKING-STORAGE SECTION.
+
+01  W-TARGET-USER     PIC X(30).
+01  W-LOGGED-IN-USER  PIC X(30).
+01  W-CAPTURED-LINE   PIC X(100).
+01  MSG-OUTPUT        PIC X(150).
+
 01 W-MSG   PIC X(100).
 01 W-TMP   PIC X(256).
 01 W-RAW   PIC X(256).
@@ -154,6 +160,8 @@ WORKING-STORAGE SECTION.
    05 EDU-DEGREE    PIC X(40).
    05 EDU-UNIV      PIC X(60).
    05 EDU-YEARS     PIC X(20).
+
+01 MESSAGES-LINE PIC X(5000).
 
 01 CONNECTIONS-LINE PIC X(5000).
 01  CONNECTIONS-TABLE.
@@ -362,6 +370,7 @@ POST-LOGIN-NAVIGATION-W5.
        MOVE "4. View My Pending Connection Requests" TO W-MSG PERFORM DISP-MSG
        MOVE "5. View My Network"                     TO W-MSG PERFORM DISP-MSG
        MOVE "6. Job search/internship"               TO W-MSG PERFORM DISP-MSG
+       MOVE "7. Messages"                            TO W-MSG PERFORM DISP-MSG
        MOVE "Enter your choice:"                     TO W-MSG PERFORM DISP-MSG
        PERFORM READ-INPUT
 
@@ -384,6 +393,9 @@ POST-LOGIN-NAVIGATION-W5.
            WHEN "6"
                PERFORM JOB-SEARCH-MENU
                PERFORM POST-LOGIN-NAVIGATION-W5
+           WHEN "7"
+               PERFORM MESSAGES
+               PERFORM POST-LOGIN-NAVIGATION-W5
            WHEN OTHER
                MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
                PERFORM POST-LOGIN-NAVIGATION-W5
@@ -394,6 +406,138 @@ POST-LOGIN-NAVIGATION.
        PERFORM POST-LOGIN-NAVIGATION-W5
        EXIT.
 
+MESSAGES.
+       PERFORM PRINT-LINE
+       MOVE "1. Send a message"                  TO W-MSG PERFORM DISP-MSG
+       MOVE "2. View my messagaes"               TO W-MSG PERFORM DISP-MSG
+       MOVE "Enter your choice:"                 TO W-MSG PERFORM DISP-MSG
+       PERFORM READ-INPUT
+       PERFORM PRINT-LINE
+
+       EVALUATE W-USR-INPT
+           WHEN "1"
+               PERFORM SEND-MESSAGE
+               PERFORM POST-LOGIN-NAVIGATION-W5
+           WHEN "2"
+               PERFORM GET-MESSAGES
+               PERFORM POST-LOGIN-NAVIGATION-W5
+       EXIT.
+
+SEND-MESSAGE.
+       MOVE SPACES TO W-TARGET-USER W-CAPTURED-LINE MSG-OUTPUT
+       MOVE "Enter the user's name:"                   TO W-MSG PERFORM DISP-MSG 
+       PERFORM READ-INPUT
+       MOVE FUNCTION TRIM(W-USR-INPT) TO W-TARGET-USER
+       *> need to check if the name is in network
+       MOVE "Enter your message:"                      TO W-MSG PERFORM DISP-MSG 
+       PERFORM CAPTURE-SINGLE-LINE
+       PERFORM SAVE-MESSAGE
+       EXIT.
+
+GET-MESSAGES.
+    MOVE 'N' TO FILE-EOF
+    MOVE SPACES TO MESSAGES-LINE
+
+    OPEN INPUT P-FILE
+    PERFORM UNTIL FILE-EOF = 'Y'
+        READ P-FILE INTO P-REC
+            AT END
+                MOVE 'Y' TO FILE-EOF
+            NOT AT END
+                MOVE FUNCTION TRIM(P-REC) TO VIEW-LINE
+
+                IF FUNCTION TRIM(VIEW-LINE(1:9)) = "[MESSAGES]"
+                    MOVE VIEW-LINE TO MESSAGES-LINE
+                    MOVE 'Y' TO FILE-EOF
+                END-IF
+        END-READ
+    END-PERFORM
+    CLOSE P-FILE
+    MOVE 'N' TO FILE-EOF
+    EXIT.
+
+SAVE-MESSAGE.
+       MOVE FUNCTION TRIM(W-TARGET-USER) TO W-TMP
+       MOVE SPACES TO W-PROFILE-PATH
+       STRING
+           "bin/profiles/"                 DELIMITED BY SIZE
+           FUNCTION TRIM(W-TARGET-USER)       DELIMITED BY SPACE
+           ".txt"                          DELIMITED BY SIZE
+         INTO W-PROFILE-PATH
+       END-STRING
+       
+       DISPLAY "DEBUG: Target profile path = [" FUNCTION TRIM(W-PROFILE-PATH) "]" *> works
+       
+       OPEN INPUT P-FILE
+       DISPLAY "DEBUG: File status after open = " P-STAT *> works
+       OPEN OUTPUT P-TEMP-FILE
+
+       IF P-STAT NOT = "00"
+           DISPLAY "Error: cannot open profile file for reading."
+           EXIT PARAGRAPH
+       
+       OPEN OUTPUT P-TEMP-FILE
+       IF P-STAT NOT = "00"
+           DISPLAY "Error: cannot open temp file for writing."
+           EXIT PARAGRAPH
+       
+       MOVE 'N' TO FILE-EOF
+       MOVE 'N' TO FOUND-FILE
+       
+       PERFORM UNTIL FILE-EOF = 'Y'
+           READ P-FILE INTO P-REC
+               AT END
+                   MOVE 'Y' TO FILE-EOF
+               NOT AT END
+                   MOVE FUNCTION TRIM(P-REC) TO VIEW-LINE
+       
+                   IF VIEW-LINE = "[MESSAGES]"
+                       MOVE 'Y' TO FOUND-FILE
+                       WRITE P-TEMP-REC FROM P-REC
+       
+                       *> Write the new message immediately after
+                       STRING "From " DELIMITED BY SIZE
+                              W-LOGGED-IN-USER DELIMITED BY SIZE
+                              ": " DELIMITED BY SIZE
+                              W-CAPTURED-LINE DELIMITED BY SIZE
+                              INTO MSG-OUTPUT
+                       END-STRING
+                       WRITE P-TEMP-REC FROM MSG-OUTPUT
+                   ELSE
+                       WRITE P-TEMP-REC FROM P-REC
+                   END-IF
+           END-READ
+       END-PERFORM
+
+       DISPLAY "DEBUG: [MESSAGES] not found, inserting manually" *> never prints, so problem occurs before
+       IF FOUND-FILE = 'N'
+       WRITE P-TEMP-REC FROM "[MESSAGES]"
+       STRING "From " DELIMITED BY SIZE
+              W-LOGGED-IN-USER DELIMITED BY SIZE
+              ": " DELIMITED BY SIZE
+              W-CAPTURED-LINE DELIMITED BY SIZE
+              INTO MSG-OUTPUT
+       END-STRING
+       WRITE P-TEMP-REC FROM MSG-OUTPUT
+       WRITE P-TEMP-REC FROM "[/MESSAGES]"
+
+       CLOSE P-FILE
+       CLOSE P-TEMP-FILE
+       
+       *> Replace original with temp
+       STRING "mv bin/profiles/te-mp.txt " DELIMITED BY SIZE
+              W-PROFILE-PATH                 DELIMITED BY SIZE
+              INTO W-TMP
+       END-STRING
+       
+       DISPLAY "DEBUG: mv command = " W-TMP
+       CALL "SYSTEM" USING W-TMP
+       DISPLAY "DEBUG: mv command issued"
+       
+       MOVE "Message sent successfully!" TO W-MSG
+       PERFORM DISP-MSG
+       EXIT.
+       
 JOB-SEARCH-MENU.
        MOVE "--- Job Search/Internship Menu ---" TO W-MSG PERFORM DISP-MSG
        MOVE "1. Post a Job/Internship"           TO W-MSG PERFORM DISP-MSG
