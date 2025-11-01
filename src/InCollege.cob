@@ -333,6 +333,7 @@ MAIN-SECTION.
                PERFORM PRINT-LINE
                MOVE "Please enter your username:" TO W-MSG PERFORM DISP-MSG
                PERFORM READ-INPUT-RAW
+               MOVE FUNCTION TRIM(W-USR-INPT) TO W-LOGGED-IN-USER
                PERFORM VALIDATE-USERNAME
                IF VALID-USERNAME
                    MOVE "Please enter your password:" TO W-MSG PERFORM DISP-MSG
@@ -371,6 +372,7 @@ POST-LOGIN-NAVIGATION-W5.
        MOVE "5. View My Network"                     TO W-MSG PERFORM DISP-MSG
        MOVE "6. Job search/internship"               TO W-MSG PERFORM DISP-MSG
        MOVE "7. Messages"                            TO W-MSG PERFORM DISP-MSG
+       MOVE "8. DEBUG Create profile"                            TO W-MSG PERFORM DISP-MSG
        MOVE "Enter your choice:"                     TO W-MSG PERFORM DISP-MSG
        PERFORM READ-INPUT
 
@@ -396,6 +398,9 @@ POST-LOGIN-NAVIGATION-W5.
            WHEN "7"
                PERFORM MESSAGES
                PERFORM POST-LOGIN-NAVIGATION-W5
+           WHEN "8"
+               PERFORM CREATE-EDIT-PROFILE
+               PERFORM POST-LOGIN-NAVIGATION-W5
            WHEN OTHER
                MOVE "Invalid selection. Please try again." TO W-MSG PERFORM DISP-MSG
                PERFORM POST-LOGIN-NAVIGATION-W5
@@ -419,7 +424,6 @@ MESSAGES.
                PERFORM SEND-MESSAGE
                PERFORM POST-LOGIN-NAVIGATION-W5
            WHEN "2"
-               PERFORM GET-MESSAGES
                PERFORM POST-LOGIN-NAVIGATION-W5
        EXIT.
 
@@ -428,80 +432,64 @@ SEND-MESSAGE.
        MOVE "Enter the user's name:"                   TO W-MSG PERFORM DISP-MSG 
        PERFORM READ-INPUT
        MOVE FUNCTION TRIM(W-USR-INPT) TO W-TARGET-USER
+       
        *> need to check if the name is in network
+
        MOVE "Enter your message:"                      TO W-MSG PERFORM DISP-MSG 
        PERFORM CAPTURE-SINGLE-LINE
+       MOVE W-OUTPUT-LONG TO W-CAPTURED-LINE
        PERFORM SAVE-MESSAGE
        EXIT.
-
-GET-MESSAGES.
-    MOVE 'N' TO FILE-EOF
-    MOVE SPACES TO MESSAGES-LINE
-
-    OPEN INPUT P-FILE
-    PERFORM UNTIL FILE-EOF = 'Y'
-        READ P-FILE INTO P-REC
-            AT END
-                MOVE 'Y' TO FILE-EOF
-            NOT AT END
-                MOVE FUNCTION TRIM(P-REC) TO VIEW-LINE
-
-                IF FUNCTION TRIM(VIEW-LINE(1:9)) = "[MESSAGES]"
-                    MOVE VIEW-LINE TO MESSAGES-LINE
-                    MOVE 'Y' TO FILE-EOF
-                END-IF
-        END-READ
-    END-PERFORM
-    CLOSE P-FILE
-    MOVE 'N' TO FILE-EOF
-    EXIT.
 
 SAVE-MESSAGE.
        MOVE FUNCTION TRIM(W-TARGET-USER) TO W-TMP
        MOVE SPACES TO W-PROFILE-PATH
        STRING
-           "bin/profiles/"                 DELIMITED BY SIZE
-           FUNCTION TRIM(W-TARGET-USER)       DELIMITED BY SPACE
-           ".txt"                          DELIMITED BY SIZE
+           "bin/profiles/"              DELIMITED BY SIZE
+           FUNCTION TRIM(W-TARGET-USER) DELIMITED BY SPACE
+           ".txt"                       DELIMITED BY SIZE
          INTO W-PROFILE-PATH
        END-STRING
-       
-       DISPLAY "DEBUG: Target profile path = [" FUNCTION TRIM(W-PROFILE-PATH) "]" *> works
-       
-       OPEN INPUT P-FILE
-       DISPLAY "DEBUG: File status after open = " P-STAT *> works
-       OPEN OUTPUT P-TEMP-FILE
 
+       DISPLAY "DEBUG: Target profile path = [" FUNCTION TRIM(W-PROFILE-PATH) "]"
+       DISPLAY "DEBUG: Message captured = [" FUNCTION TRIM(W-CAPTURED-LINE) "]"
+
+       *> Open target profile for reading
+       OPEN INPUT P-FILE
        IF P-STAT NOT = "00"
-           DISPLAY "Error: cannot open profile file for reading."
+           DISPLAY "Error: cannot open receiver profile file for reading."
            EXIT PARAGRAPH
-       
+       END-IF
+
+       *> Open temp file for writing
        OPEN OUTPUT P-TEMP-FILE
        IF P-STAT NOT = "00"
            DISPLAY "Error: cannot open temp file for writing."
            EXIT PARAGRAPH
+       END-IF
        
        MOVE 'N' TO FILE-EOF
        MOVE 'N' TO FOUND-FILE
-       
+
        PERFORM UNTIL FILE-EOF = 'Y'
            READ P-FILE INTO P-REC
                AT END
                    MOVE 'Y' TO FILE-EOF
                NOT AT END
                    MOVE FUNCTION TRIM(P-REC) TO VIEW-LINE
-       
-                   IF VIEW-LINE = "[MESSAGES]"
+
+                   IF FUNCTION TRIM(VIEW-LINE) = "[MESSAGES]"
                        MOVE 'Y' TO FOUND-FILE
                        WRITE P-TEMP-REC FROM P-REC
-       
-                       *> Write the new message immediately after
-                       STRING "From " DELIMITED BY SIZE
-                              W-LOGGED-IN-USER DELIMITED BY SIZE
-                              ": " DELIMITED BY SIZE
-                              W-CAPTURED-LINE DELIMITED BY SIZE
+
+                       *> Write new message immediately after [MESSAGES]
+                       STRING "From "                       DELIMITED BY SIZE
+                              FUNCTION TRIM(W-LOGGED-IN-USER) DELIMITED BY SIZE
+                              ": "                          DELIMITED BY SIZE
+                              FUNCTION TRIM(W-CAPTURED-LINE) DELIMITED BY SIZE
                               INTO MSG-OUTPUT
                        END-STRING
+
                        WRITE P-TEMP-REC FROM MSG-OUTPUT
                    ELSE
                        WRITE P-TEMP-REC FROM P-REC
@@ -509,31 +497,27 @@ SAVE-MESSAGE.
            END-READ
        END-PERFORM
 
-       DISPLAY "DEBUG: [MESSAGES] not found, inserting manually" *> never prints, so problem occurs before
-       IF FOUND-FILE = 'N'
-       WRITE P-TEMP-REC FROM "[MESSAGES]"
-       STRING "From " DELIMITED BY SIZE
-              W-LOGGED-IN-USER DELIMITED BY SIZE
-              ": " DELIMITED BY SIZE
-              W-CAPTURED-LINE DELIMITED BY SIZE
-              INTO MSG-OUTPUT
-       END-STRING
-       WRITE P-TEMP-REC FROM MSG-OUTPUT
-       WRITE P-TEMP-REC FROM "[/MESSAGES]"
-
        CLOSE P-FILE
        CLOSE P-TEMP-FILE
-       
-       *> Replace original with temp
-       STRING "mv bin/profiles/te-mp.txt " DELIMITED BY SIZE
-              W-PROFILE-PATH                 DELIMITED BY SIZE
-              INTO W-TMP
-       END-STRING
-       
-       DISPLAY "DEBUG: mv command = " W-TMP
-       CALL "SYSTEM" USING W-TMP
-       DISPLAY "DEBUG: mv command issued"
-       
+
+       *> Copy temp file back to receiver's profile
+       OPEN INPUT P-TEMP-FILE
+       OPEN OUTPUT P-FILE
+
+       MOVE 'N' TO FILE-EOF
+
+       PERFORM UNTIL FILE-EOF = 'Y'
+           READ P-TEMP-FILE INTO P-REC
+               AT END
+                   MOVE 'Y' TO FILE-EOF
+               NOT AT END
+                   WRITE P-REC
+           END-READ
+       END-PERFORM
+
+       CLOSE P-TEMP-FILE
+       CLOSE P-FILE
+
        MOVE "Message sent successfully!" TO W-MSG
        PERFORM DISP-MSG
        EXIT.
@@ -1243,6 +1227,7 @@ LOG-IN.
         FUNCTION TRIM(USER-PASSWORD(UX)) = FUNCTION TRIM(W-PASSWORD)
          MOVE "You have successfully logged in." TO W-MSG
 
+
          MOVE SPACES TO W-MSG
          STRING
              "Welcome, "                 DELIMITED BY SIZE
@@ -1513,7 +1498,6 @@ BUILD-PROFILE-PATH.
          INTO W-PROFILE-PATH
        END-STRING
        EXIT.
-
 
 SAVE-EMPTY-PROFILE.
        OPEN OUTPUT P-FILE
@@ -1816,9 +1800,14 @@ SAVE-PROFILE-TO-FILE.
        END-PERFORM
 
        MOVE "[/EDUCATION]" TO P-REC WRITE P-REC
+
        MOVE "[CONNECTIONS]" TO P-REC WRITE P-REC
        MOVE "CONNECTIONS: " TO P-REC WRITE P-REC
        MOVE "[/CONNECTIONS]" TO P-REC WRITE P-REC
+
+       MOVE "[MESSAGES]" TO P-REC WRITE P-REC
+       MOVE "[/MESSAGES]" TO P-REC WRITE P-REC
+
        MOVE "[EOF]"        TO P-REC WRITE P-REC
 
        CLOSE P-FILE
@@ -1828,9 +1817,9 @@ SAVE-PROFILE-TO-FILE.
 VIEW-PROFILE.
        PERFORM BUILD-PROFILE-PATH
        OPEN INPUT P-FILE
-
        IF P-STAT NOT = "00"
            MOVE "No profile found. Create/Edit your profile first." TO W-MSG
+           PERFORM CREATE-EDIT-PROFILE
            PERFORM DISP-MSG
            EXIT PARAGRAPH
        END-IF
