@@ -1,2 +1,47 @@
 USERNAME: martin
+[PROFILE]
+FIRST-NAME: Martin
+LAST-NAME: Gajadhar
+UNIVERSITY: University of South Florida
+MAJOR: Comptuer Science
+GRAD-YEAR: 2026
+[ABOUT]
+BEGIN
+Senior at USF studying Computer Science. Interested in software development and Embedded Systems.
+END
+[/ABOUT]
+[EXPERIENCES]
+COUNT: 2
+[[EXP]]
+TITLE: Software Engineer
+COMPANY: Seimens Energy
+DATES: Jun 2023 - May 2025
+[DESC]
+BEGIN
+Worked as a Data Engineer
+END
+[/DESC]
+[[/EXP]]
+[[EXP]]
+TITLE: Software Engineer
+COMPANY: Aevex Aerospace
+DATES: May 2025 - Sept 2025
+[DESC]
+BEGIN
+Worked as a Software Engineer
+END
+[/DESC]
+[[/EXP]]
+[/EXPERIENCES]
+[EDUCATION]
+COUNT: 0
+[/EDUCATION]
+[CONNECTIONS]
+CONNECTIONS:Opal,
+[/CONNECTIONS]
+[MESSAGES]
+From Opal: Hello
+From Opal: Hello
+From Opal: Hello
+[/MESSAGES]
 [EOF]
