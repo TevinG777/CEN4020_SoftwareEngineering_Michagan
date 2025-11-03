@@ -221,7 +221,9 @@ WORKING-STORAGE SECTION.
 *> ---- Established connections helpers ----
 01 EC-LINE        PIC X(120).
 01 EC-U1          PIC X(50).
+01 EC-TMP-U1      PIC X(50).
 01 EC-U2          PIC X(50).
+01 EC-TMP-U2      PIC X(50).
 01 EC-OTHER       PIC X(50).
 01 EC-PAIR        PIC X(120).
 01 EC-EXISTS      PIC X VALUE 'N'.
@@ -372,7 +374,6 @@ POST-LOGIN-NAVIGATION-W5.
        MOVE "5. View My Network"                     TO W-MSG PERFORM DISP-MSG
        MOVE "6. Job search/internship"               TO W-MSG PERFORM DISP-MSG
        MOVE "7. Messages"                            TO W-MSG PERFORM DISP-MSG
-       MOVE "8. DEBUG Create profile"                            TO W-MSG PERFORM DISP-MSG
        MOVE "Enter your choice:"                     TO W-MSG PERFORM DISP-MSG
        PERFORM READ-INPUT
 
@@ -412,30 +413,53 @@ POST-LOGIN-NAVIGATION.
        EXIT.
 
 MESSAGES.
-       PERFORM PRINT-LINE
-       MOVE "1. Send a message"                  TO W-MSG PERFORM DISP-MSG
-       MOVE "2. View my messagaes"               TO W-MSG PERFORM DISP-MSG
-       MOVE "Enter your choice:"                 TO W-MSG PERFORM DISP-MSG
-       PERFORM READ-INPUT
-       PERFORM PRINT-LINE
+       MOVE 'N' TO W-TMP
+       PERFORM UNTIL W-TMP = 'Y'
+           PERFORM PRINT-LINE
+           MOVE "1. Send a message"                  TO W-MSG PERFORM DISP-MSG
+           MOVE "2. View my messages"               TO W-MSG PERFORM DISP-MSG
+           MOVE "Enter your choice:"                 TO W-MSG PERFORM DISP-MSG
+           PERFORM READ-INPUT
+           PERFORM PRINT-LINE
 
-       EVALUATE W-USR-INPT
-           WHEN "1"
-               PERFORM SEND-MESSAGE
-               PERFORM POST-LOGIN-NAVIGATION-W5
-           WHEN "2"
-               PERFORM POST-LOGIN-NAVIGATION-W5
+           EVALUATE W-USR-INPT
+               WHEN "1"
+                   MOVE 'Y' TO W-TMP
+                   PERFORM SEND-MESSAGE
+                   PERFORM POST-LOGIN-NAVIGATION-W5
+               WHEN "2"
+                   MOVE 'Y' TO W-TMP
+                   PERFORM POST-LOGIN-NAVIGATION-W5
+               WHEN OTHER
+                   MOVE "Invalid choice, try again" TO W-MSG PERFORM DISP-MSG
+       END-PERFORM
        EXIT.
 
 SEND-MESSAGE.
        MOVE SPACES TO W-TARGET-USER W-CAPTURED-LINE MSG-OUTPUT
-       MOVE "Enter the user's name:"                   TO W-MSG PERFORM DISP-MSG 
+       MOVE "Enter the user's full name:"                   TO W-MSG PERFORM DISP-MSG
        PERFORM READ-INPUT
        MOVE FUNCTION TRIM(W-USR-INPT) TO W-TARGET-USER
-       
-       *> need to check if the name is in network
 
-       MOVE "Enter your message:"                      TO W-MSG PERFORM DISP-MSG 
+       *> need to check if the name is in network
+       PERFORM FIND-NAME-MESSAGE
+
+       IF FOUND-FILE = 'N'
+           EXIT PARAGRAPH
+       END-IF
+       MOVE W-TARGET-USER TO EC-U1
+       MOVE W-USERNAME TO EC-U2
+       PERFORM NORMALIZE-PAIR
+       DISPLAY " " EC-U1 " " EC-U2
+       PERFORM CHECK-IN-NETWORK
+
+       IF EC-EXISTS = 'N'
+           MOVE "User is not in your network, returning to menu." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       MOVE "Enter your message:"                      TO W-MSG PERFORM DISP-MSG
        PERFORM CAPTURE-SINGLE-LINE
        MOVE W-OUTPUT-LONG TO W-CAPTURED-LINE
        PERFORM SAVE-MESSAGE
@@ -451,23 +475,18 @@ SAVE-MESSAGE.
          INTO W-PROFILE-PATH
        END-STRING
 
-       DISPLAY "DEBUG: Target profile path = [" FUNCTION TRIM(W-PROFILE-PATH) "]"
-       DISPLAY "DEBUG: Message captured = [" FUNCTION TRIM(W-CAPTURED-LINE) "]"
-
        *> Open target profile for reading
        OPEN INPUT P-FILE
        IF P-STAT NOT = "00"
-           DISPLAY "Error: cannot open receiver profile file for reading."
            EXIT PARAGRAPH
        END-IF
 
        *> Open temp file for writing
        OPEN OUTPUT P-TEMP-FILE
        IF P-STAT NOT = "00"
-           DISPLAY "Error: cannot open temp file for writing."
            EXIT PARAGRAPH
        END-IF
-       
+
        MOVE 'N' TO FILE-EOF
        MOVE 'N' TO FOUND-FILE
 
@@ -500,28 +519,94 @@ SAVE-MESSAGE.
        CLOSE P-FILE
        CLOSE P-TEMP-FILE
 
-       *> Copy temp file back to receiver's profile
-       OPEN INPUT P-TEMP-FILE
-       OPEN OUTPUT P-FILE
 
-       MOVE 'N' TO FILE-EOF
-
-       PERFORM UNTIL FILE-EOF = 'Y'
-           READ P-TEMP-FILE INTO P-REC
-               AT END
-                   MOVE 'Y' TO FILE-EOF
-               NOT AT END
-                   WRITE P-REC
-           END-READ
-       END-PERFORM
-
-       CLOSE P-TEMP-FILE
-       CLOSE P-FILE
+       STRING "mv bin/profiles/te-mp.txt " W-PROFILE-PATH
+              DELIMITED BY SIZE
+              INTO W-TMP
+       END-STRING
+       CALL "SYSTEM" USING W-TMP
 
        MOVE "Message sent successfully!" TO W-MSG
        PERFORM DISP-MSG
        EXIT.
-       
+
+FIND-NAME-MESSAGE.
+
+       IF W-TARGET-USER = SPACES
+           MOVE "Invalid input" TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       *> Generate temporary file listing all .txt profiles
+       CALL "SYSTEM" USING "ls bin/profiles/*.txt > bin/profiles/file-list.txt"
+
+       MOVE "bin/profiles/file-list.txt" TO W-PROFILE-PATH-CUR
+
+       OPEN INPUT P-FILE-CUR
+       MOVE 'N' TO FILE-EOF
+       MOVE 'N' TO FOUND-FILE
+
+       PERFORM UNTIL FILE-EOF = 'Y' OR FOUND-FILE = 'Y'
+           READ P-FILE-CUR
+               AT END
+                   MOVE 'Y' TO FILE-EOF
+               NOT AT END
+                   MOVE FUNCTION TRIM(P-REC-CUR) TO W-PROFILE-PATH
+                   IF W-PROFILE-PATH = "bin/profiles/file-list.txt"
+                       CONTINUE
+                   ELSE
+                       OPEN INPUT P-FILE
+                       PERFORM CLEAR-PROFILE-WS
+                       PERFORM PARSE-PROFILE-FILE
+                       CLOSE P-FILE
+
+                       MOVE SPACES TO FULL-NAME
+                       STRING
+                           FUNCTION LOWER-CASE(FUNCTION TRIM(FIRST-NAME)) DELIMITED BY SIZE
+                           FUNCTION LOWER-CASE(FUNCTION TRIM(LAST-NAME)) DELIMITED BY SIZE
+                           INTO FULL-NAME
+                       END-STRING
+
+                       IF FULL-NAME = W-USR-INPT
+                           MOVE 'Y' TO FOUND-FILE
+                           MOVE W-PROFILE-PATH TO SEARCH-NAME-PATH
+
+                           MOVE SEARCH-NAME-PATH(14:) TO W-TMP
+                           UNSTRING W-TMP
+                               DELIMITED BY ".txt"
+                               INTO W-TARGET-USER
+                           END-UNSTRING
+
+                       END-IF
+                   END-IF
+
+           END-READ
+       END-PERFORM
+
+       CLOSE P-FILE
+       CLOSE P-FILE-CUR
+       CALL "SYSTEM" USING "rm /workspace/bin/profiles/file-list.txt"
+
+       IF FUNCTION TRIM(FUNCTION LOWER-CASE(W-TARGET-USER)) = FUNCTION TRIM(FUNCTION LOWER-CASE(W-USERNAME))
+           MOVE "Cannot send message to self, returning to menu." TO W-MSG
+           PERFORM DISP-MSG
+           MOVE 'N' TO FOUND-FILE
+           EXIT PARAGRAPH
+       END-IF
+
+       IF FOUND-FILE = 'Y'
+           MOVE "Found user." TO W-MSG
+           PERFORM DISP-MSG
+       END-IF
+
+       IF FOUND-FILE = 'N'
+           MOVE "No user found by that name." TO W-MSG
+           PERFORM DISP-MSG
+       END-IF
+       EXIT.
+
+
 JOB-SEARCH-MENU.
        MOVE "--- Job Search/Internship Menu ---" TO W-MSG PERFORM DISP-MSG
        MOVE "1. Post a Job/Internship"           TO W-MSG PERFORM DISP-MSG
@@ -2689,6 +2774,31 @@ VIEW-NETWORK.
 
        MOVE "--------------------" TO W-MSG PERFORM DISP-MSG
        EXIT.
+
+*> Checks if EC-U1 and EC-U2 are in a network
+CHECK-IN-NETWORK.
+
+       MOVE 'N' TO EC-EXISTS
+       OPEN INPUT EC-FILE
+       PERFORM UNTIL 1 = 0
+           READ EC-FILE INTO EC-LINE
+               AT END EXIT PERFORM
+               NOT AT END
+                   MOVE FUNCTION TRIM(EC-LINE) TO EC-LINE
+                   IF EC-LINE NOT = SPACES
+                       UNSTRING EC-LINE DELIMITED BY ","
+                           INTO EC-TMP-U1, EC-TMP-U2
+                       END-UNSTRING
+                       IF FUNCTION LOWER-CASE(FUNCTION TRIM(EC-U1)) = FUNCTION LOWER-CASE(FUNCTION TRIM(EC-TMP-U1))
+                       AND FUNCTION LOWER-CASE(FUNCTION TRIM(EC-U2)) = FUNCTION LOWER-CASE(FUNCTION TRIM(EC-TMP-U2))
+                           MOVE 'Y' TO EC-EXISTS
+                       END-IF
+                   END-IF
+           END-READ
+       END-PERFORM
+       CLOSE EC-FILE
+       EXIT.
+
 
 PRINT-OTHER-SUMMARY.
        *> Save current parsed profile fields (we’ll reuse the same WS)
