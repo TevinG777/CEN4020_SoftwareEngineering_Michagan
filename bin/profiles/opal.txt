@@ -40,5 +40,6 @@ COUNT: 0
 CONNECTIONS:Tevin,
 [/CONNECTIONS]
 [MESSAGES]
+From Tevin: Hello from Epic 8 messaging test.
 [/MESSAGES]
 [EOF]

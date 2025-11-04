@@ -6,7 +6,7 @@ Enter your choice:
 Please enter your username:
 Please enter your password:
 
-Welcome, Martin!
+Welcome, Tevin!
 1. View My Profile
 2. Search for User
 3. Learn a New Skill
@@ -22,7 +22,9 @@ Enter your choice:
 
 Enter the user's full name:
 Found user.
-User is not in your network, returning to menu.
+Enter your message:
+
+Message sent successfully!
 1. View My Profile
 2. Search for User
 3. Learn a New Skill
