@@ -1,7 +1,7 @@
 USERNAME: martin
 [PROFILE]
 FIRST-NAME: Martin
-LAST-NAME: Gajadhar
+LAST-NAME: Ganen-Villa
 UNIVERSITY: University of South Florida
 MAJOR: Comptuer Science
 GRAD-YEAR: 2026
@@ -40,6 +40,7 @@ COUNT: 0
 CONNECTIONS:Opal,
 [/CONNECTIONS]
 [MESSAGES]
+From Tevin: Hello from Epic 8 messaging test.
 From Opal: Hello
 From Opal: Hello
 From Opal: Hello
