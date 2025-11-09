@@ -70,7 +70,6 @@ FD APP-FILE.
 WORKING-STORAGE SECTION.
 
 01  W-TARGET-USER     PIC X(30).
-01  W-LOGGED-IN-USER  PIC X(30).
 01  W-CAPTURED-LINE   PIC X(100).
 01  MSG-OUTPUT        PIC X(150).
 
@@ -162,6 +161,8 @@ WORKING-STORAGE SECTION.
    05 EDU-YEARS     PIC X(20).
 
 01 MESSAGES-LINE PIC X(5000).
+01 MSG-COUNT PIC 9(4) VALUE 0.
+01 W-LOGGED-IN-USER PIC X(50).
 
 01 CONNECTIONS-LINE PIC X(5000).
 01  CONNECTIONS-TABLE.
@@ -217,6 +218,12 @@ WORKING-STORAGE SECTION.
 *> migration to memory helpers
 01 SKIP-CONN-BLOCK     PIC X VALUE 'N'.
 01 INSERTED-CONN-BLK   PIC X VALUE 'N'.
+
+*> Established connections
+01 EST-COUNT PIC 9(4) VALUE 0.
+01 EST-ENTRY OCCURS 100 TIMES
+    INDEXED BY EST-IDX
+    PIC X(120).
 
 *> ---- Established connections helpers ----
 01 EC-LINE        PIC X(120).
@@ -429,6 +436,7 @@ MESSAGES.
                    PERFORM POST-LOGIN-NAVIGATION-W5
                WHEN "2"
                    MOVE 'Y' TO W-TMP
+                   PERFORM VIEW-MESSAGES
                    PERFORM POST-LOGIN-NAVIGATION-W5
                WHEN OTHER
                    MOVE "Invalid choice, try again" TO W-MSG PERFORM DISP-MSG
@@ -501,15 +509,18 @@ SAVE-MESSAGE.
                        MOVE 'Y' TO FOUND-FILE
                        WRITE P-TEMP-REC FROM P-REC
 
-                       *> Write new message immediately after [MESSAGES]
+                       *> Write new message
                        STRING "From "                       DELIMITED BY SIZE
                               FUNCTION TRIM(W-LOGGED-IN-USER) DELIMITED BY SIZE
                               ": "                          DELIMITED BY SIZE
                               FUNCTION TRIM(W-CAPTURED-LINE) DELIMITED BY SIZE
                               INTO MSG-OUTPUT
                        END-STRING
-
                        WRITE P-TEMP-REC FROM MSG-OUTPUT
+                   ELSE IF FOUND-FILE = 'Y' AND
+                          FUNCTION TRIM(VIEW-LINE) NOT = "[/MESSAGES]"
+                       *> Copy existing messages
+                       WRITE P-TEMP-REC FROM P-REC
                    ELSE
                        WRITE P-TEMP-REC FROM P-REC
                    END-IF
@@ -528,6 +539,101 @@ SAVE-MESSAGE.
 
        MOVE "Message sent successfully!" TO W-MSG
        PERFORM DISP-MSG
+       EXIT.
+
+*> Display all messages sent to the current user
+*> Load established connections from bin/established-connections.txt into EST-ENTRY table
+LOAD-ESTABLISHED-CONNECTIONS.
+       MOVE 0 TO EST-COUNT
+       OPEN INPUT EC-FILE
+       IF EC-REC NOT = SPACES
+           CONTINUE
+       END-IF
+       PERFORM UNTIL 1 = 0
+           READ EC-FILE INTO EC-REC
+               AT END
+                   EXIT PERFORM
+               NOT AT END
+                   *> Each line expected as user1,user2
+                   IF FUNCTION TRIM(EC-REC) NOT = SPACES
+                       ADD 1 TO EST-COUNT
+                       MOVE FUNCTION TRIM(EC-REC) TO EST-ENTRY(EST-COUNT)
+                   END-IF
+           END-READ
+       END-PERFORM
+       CLOSE EC-FILE
+       EXIT.
+
+*> Append a new established connection pair to bin/established-connections.txt
+SAVE-ESTABLISHED-CONNECTION.
+       OPEN EXTEND EC-FILE
+       MOVE SPACES TO EC-REC
+       STRING FUNCTION TRIM(W-OUTPUT) DELIMITED BY SIZE
+              INTO EC-REC
+       END-STRING
+       WRITE EC-REC
+       CLOSE EC-FILE
+       EXIT.
+
+VIEW-MESSAGES.
+       *> Build path to current user's profile
+       PERFORM BUILD-PROFILE-PATH
+
+       *> Open current user's profile
+       OPEN INPUT P-FILE
+       IF P-STAT NOT = "00"
+           MOVE "Error accessing profile." TO W-MSG
+           PERFORM DISP-MSG
+           EXIT PARAGRAPH
+       END-IF
+
+       MOVE 'N' TO FILE-EOF
+       MOVE 'N' TO FOUND-FILE
+       MOVE 0 TO MSG-COUNT
+
+       PERFORM PRINT-LINE
+       MOVE "=== My Messages ===" TO W-MSG
+       PERFORM DISP-MSG
+       PERFORM PRINT-LINE
+
+       PERFORM UNTIL FILE-EOF = 'Y'
+           READ P-FILE INTO P-REC
+               AT END
+                   MOVE 'Y' TO FILE-EOF
+               NOT AT END
+                   MOVE FUNCTION TRIM(P-REC) TO VIEW-LINE
+
+                   *> Start capturing messages after [MESSAGES] tag
+                   IF FUNCTION TRIM(VIEW-LINE) = "[MESSAGES]"
+                       MOVE 'Y' TO FOUND-FILE
+                   ELSE
+                       IF FUNCTION TRIM(VIEW-LINE) = "[/MESSAGES]"
+                           MOVE 'N' TO FOUND-FILE
+                       ELSE
+                           IF FOUND-FILE = 'Y' AND
+                              FUNCTION LENGTH(FUNCTION TRIM(VIEW-LINE)) > 0
+                               ADD 1 TO MSG-COUNT
+                               *> Add indentation for better readability
+                               MOVE SPACES TO W-MSG
+                               STRING "    " DELIMITED BY SIZE
+                                      FUNCTION TRIM(VIEW-LINE) DELIMITED BY SIZE
+                                      INTO W-MSG
+                               END-STRING
+                               PERFORM DISP-MSG
+                           END-IF
+                       END-IF
+                   END-IF
+           END-READ
+       END-PERFORM
+
+       CLOSE P-FILE
+
+       IF MSG-COUNT = 0
+           MOVE "You have no messages at this time." TO W-MSG
+           PERFORM DISP-MSG
+       END-IF
+
+       PERFORM PRINT-LINE
        EXIT.
 
 FIND-NAME-MESSAGE.
@@ -1312,6 +1418,8 @@ LOG-IN.
         FUNCTION TRIM(USER-PASSWORD(UX)) = FUNCTION TRIM(W-PASSWORD)
          MOVE "You have successfully logged in." TO W-MSG
 
+         *> Store logged in username for messages
+         MOVE FUNCTION TRIM(W-USERNAME) TO W-LOGGED-IN-USER
 
          MOVE SPACES TO W-MSG
          STRING
@@ -1592,6 +1700,11 @@ SAVE-EMPTY-PROFILE.
               W-USER-LOW   DELIMITED BY SPACE
          INTO P-REC
        END-STRING
+       WRITE P-REC
+
+       MOVE "[MESSAGES]" TO P-REC
+       WRITE P-REC
+       MOVE "[/MESSAGES]" TO P-REC
        WRITE P-REC
 
        MOVE "[EOF]" TO P-REC

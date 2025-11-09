@@ -40,6 +40,8 @@ COUNT: 0
 CONNECTIONS:Opal,
 [/CONNECTIONS]
 [MESSAGES]
+From Tevin: Wsg jit
+From Tevin: Hello from Epic 8 messaging test.
 From Tevin: Hello from Epic 8 messaging test.
 From Opal: Hello
 From Opal: Hello
