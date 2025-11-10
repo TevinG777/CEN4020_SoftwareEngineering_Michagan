@@ -1,0 +1,5 @@
+Scrum Master    Henrique Gamonal De Castro
+Developer #1    Martin Ganen-Villa
+Developer #2    Devon Gardner
+Tester #1	    Skyla Fitzgerald
+Tester #2       Tevin Gajadhar
