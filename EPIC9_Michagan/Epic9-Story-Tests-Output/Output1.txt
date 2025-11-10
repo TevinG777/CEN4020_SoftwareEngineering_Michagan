@@ -38,26 +38,3 @@ Enter your choice:
 6. Job search/internship
 7. Messages
 Enter your choice:
-
-1. Send a message
-2. View my messages
-Enter your choice:
-
-
-=== My Messages ===
-
-    From Tevin: Wsg
-    From Tevin: Hello from Epic 8 messaging test.
-    From Tevin: Hello from Epic 8 messaging test.
-    From Opal: Hello
-    From Opal: Hello
-    From Opal: Hello
-
-1. View My Profile
-2. Search for User
-3. Learn a New Skill
-4. View My Pending Connection Requests
-5. View My Network
-6. Job search/internship
-7. Messages
-Enter your choice:
