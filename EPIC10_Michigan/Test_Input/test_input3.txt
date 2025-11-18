@@ -1,0 +1,21 @@
+*> Testing jobs
+1
+firstuser
+Password1!
+7
+2
+6
+1
+Software Engineer
+You engineer software.
+MyCompany
+Narnia
+$200,000
+2
+1
+1
+0
+3
+2
+1
+1
