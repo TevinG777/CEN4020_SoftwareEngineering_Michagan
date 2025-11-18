@@ -1,0 +1,184 @@
+Welcome to InCollege!
+1. Log In
+2. Create New Account
+Enter your choice:
+
+Please enter your username:
+Please enter your password:
+
+Welcome, Martin!
+1. View My Profile
+2. Search for User
+3. Learn a New Skill
+4. View My Pending Connection Requests
+5. View My Network
+6. Job search/internship
+7. Messages
+Enter your choice:
+--- Job Search/Internship Menu ---
+1. Post a Job/Internship
+2. Browse Jobs/Internships
+3. View My Applications
+4. Back to Main Menu
+Enter your choice:
+--- Available Job Listings ---
+1. Software Intern at TechCorp (New York, NY)
+2. Data Analyst at DataSolutions (Remote)
+3. Marketing Specialist at BrandInc (Chicago, IL)
+-----------------------------
+Enter job number to view details, or 0 to go back:
+--- Job Details ---
+Title: Data Analyst
+Description: Analyze usage metrics and build dashboards.
+Employer: DataSolutions
+Location: Remote
+Salary: Not provided
+-------------------
+1. Apply for this Job
+2. Back to Job List
+Enter your choice:
+You have already applied for Data Analyst at DataSolutions.
+--- Available Job Listings ---
+1. Software Intern at TechCorp (New York, NY)
+2. Data Analyst at DataSolutions (Remote)
+3. Marketing Specialist at BrandInc (Chicago, IL)
+-----------------------------
+Enter job number to view details, or 0 to go back:
+--- Job Details ---
+Title: Marketing Specialist
+Description: Coordinate national campaigns and track performance.
+Employer: BrandInc
+Location: Chicago, IL
+Salary: $55,000
+-------------------
+1. Apply for this Job
+2. Back to Job List
+Enter your choice:
+You have already applied for Marketing Specialist at BrandInc.
+--- Available Job Listings ---
+1. Software Intern at TechCorp (New York, NY)
+2. Data Analyst at DataSolutions (Remote)
+3. Marketing Specialist at BrandInc (Chicago, IL)
+-----------------------------
+Enter job number to view details, or 0 to go back:
+--- Job Search/Internship Menu ---
+1. Post a Job/Internship
+2. Browse Jobs/Internships
+3. View My Applications
+4. Back to Main Menu
+Enter your choice:
+--- Your Job Applications ---
+Application Summary for Martin
+------------------------------
+Job Title: Data Analyst
+Employer: DataSolutions
+Location: Remote
+---
+Job Title: Marketing Specialist
+Employer: BrandInc
+Location: Chicago, IL
+---
+------------------------------
+Total Applications: 2
+------------------------------
+--- Job Search/Internship Menu ---
+1. Post a Job/Internship
+2. Browse Jobs/Internships
+3. View My Applications
+4. Back to Main Menu
+Enter your choice:
+1. View My Profile
+2. Search for User
+3. Learn a New Skill
+4. View My Pending Connection Requests
+5. View My Network
+6. Job search/internship
+7. Messages
+Enter your choice:
+
+1. Send a message
+2. View my messages
+Enter your choice:
+
+
+=== My Messages ===
+
+    From Tevin: Wsg
+    From Tevin: Hello from Epic 8 messaging test.
+    From Tevin: Hello from Epic 8 messaging test.
+    From Opal: Hello
+    From Opal: Hello
+    From Opal: Hello
+
+1. View My Profile
+2. Search for User
+3. Learn a New Skill
+4. View My Pending Connection Requests
+5. View My Network
+6. Job search/internship
+7. Messages
+Enter your choice:
+Learn a New Skill - choose one from the list:
+1. Public Speaking
+2. Microsoft Excel
+3. Time Management
+4. Leadership
+5. Coding Fundamentals
+6. Return to previous menu
+Enter choice (1-6):
+1. View My Profile
+2. Search for User
+3. Learn a New Skill
+4. View My Pending Connection Requests
+5. View My Network
+6. Job search/internship
+7. Messages
+Enter your choice:
+-----------------------------------
+--- Pending Connection Requests ---
+(none)
+-----------------------------------
+1. View My Profile
+2. Search for User
+3. Learn a New Skill
+4. View My Pending Connection Requests
+5. View My Network
+6. Job search/internship
+7. Messages
+Enter your choice:
+
+===== USER PROFILE =====
+
+Name: Martin Ganen-Villa
+University: University of South Florida
+Major: Comptuer Science
+Graduation Year: 2026
+
+About Me: Senior at USF studying Computer Science. Interested in software development and Embedded S
+
+Experiences:
+
+    Title: Software Engineer
+    Company: Seimens Energy
+    Dates: Jun 2023 - May 2025
+    Description: Worked as a Data Engineer
+
+    Title: Software Engineer
+    Company: Aevex Aerospace
+    Dates: May 2025 - Sept 2025
+    Description: Worked as a Software Engineer
+
+Education:
+
+    (none)
+
+===== END USER PROFILE =====
+
+1. View My Profile
+2. Search for User
+3. Learn a New Skill
+4. View My Pending Connection Requests
+5. View My Network
+6. Job search/internship
+7. Messages
+Enter your choice:
